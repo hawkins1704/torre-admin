@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 // Obtener todas las ventas ordenadas por fecha de creación (con límite)
 export const getAll = query({
-  args: { paginationOpts: v.object({ numItems: v.number() }) },
+  args: { paginationOpts: v.object({ numItems: v.number(), cursor: v.union(v.string(), v.null()) }) },
   handler: async (ctx, args) => {
     const sales = await ctx.db.query("sales")
       .withIndex("by_created_at")
