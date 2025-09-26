@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 // Obtener todas las ventas ordenadas por fecha de creación (con límite)
 export const getAll = query({
@@ -180,7 +181,21 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     
-    return await ctx.db.insert("sales", {
+    // Validar stock de todos los productos antes de crear la venta
+    for (const productSale of args.products) {
+      const stockValidation = await ctx.runQuery(api.products.validateStockForSale, {
+        productId: productSale.productId,
+        quantity: productSale.quantity,
+        variations: productSale.variations,
+      });
+      
+      if (!stockValidation.valid) {
+        throw new Error(stockValidation.error);
+      }
+    }
+    
+    // Crear la venta
+    const saleId = await ctx.db.insert("sales", {
       saleNumber: args.saleNumber,
       saleDate: args.saleDate,
       customerName: args.customerName,
@@ -195,6 +210,17 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    
+    // Actualizar stock de cada producto
+    for (const productSale of args.products) {
+      await ctx.runMutation(api.products.updateStockFromSale, {
+        productId: productSale.productId,
+        quantity: productSale.quantity,
+        variations: productSale.variations,
+      });
+    }
+    
+    return saleId;
   },
 });
 
@@ -227,6 +253,51 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     
+    // Obtener la venta actual para comparar productos
+    const currentSale = await ctx.db.get(args.id);
+    if (!currentSale) {
+      throw new Error("Venta no encontrada");
+    }
+    
+    // Revertir stock de productos anteriores
+    for (const productSale of currentSale.products) {
+      await ctx.runMutation(api.products.updateStockFromOrder, {
+        productId: productSale.productId,
+        quantity: productSale.quantity, // Sumar stock (revertir venta)
+        variations: productSale.variations,
+      });
+    }
+    
+    // Validar stock de productos nuevos
+    for (const productSale of args.products) {
+      const stockValidation = await ctx.runQuery(api.products.validateStockForSale, {
+        productId: productSale.productId,
+        quantity: productSale.quantity,
+        variations: productSale.variations,
+      });
+      
+      if (!stockValidation.valid) {
+        // Revertir cambios si hay error
+        for (const productSale of currentSale.products) {
+          await ctx.runMutation(api.products.updateStockFromSale, {
+            productId: productSale.productId,
+            quantity: productSale.quantity,
+            variations: productSale.variations,
+          });
+        }
+        throw new Error(stockValidation.error);
+      }
+    }
+    
+    // Aplicar stock de productos nuevos
+    for (const productSale of args.products) {
+      await ctx.runMutation(api.products.updateStockFromSale, {
+        productId: productSale.productId,
+        quantity: productSale.quantity,
+        variations: productSale.variations,
+      });
+    }
+    
     return await ctx.db.patch(args.id, {
       saleNumber: args.saleNumber,
       saleDate: args.saleDate,
@@ -248,6 +319,21 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("sales") },
   handler: async (ctx, args) => {
+    // Obtener la venta antes de eliminarla
+    const sale = await ctx.db.get(args.id);
+    if (!sale) {
+      throw new Error("Venta no encontrada");
+    }
+    
+    // Revertir stock de productos
+    for (const productSale of sale.products) {
+      await ctx.runMutation(api.products.updateStockFromOrder, {
+        productId: productSale.productId,
+        quantity: productSale.quantity, // Sumar stock (revertir venta)
+        variations: productSale.variations,
+      });
+    }
+    
     return await ctx.db.delete(args.id);
   },
 });

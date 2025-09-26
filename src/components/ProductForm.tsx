@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -27,6 +28,8 @@ interface ProductFormData {
   igv: number;
   imageId?: Id<'_storage'>;
   variations: ProductVariation[];
+  stock: number;
+  stockByVariation: any;
 }
 
 
@@ -37,11 +40,13 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
     age: '',
     categoryId: '',
     cost: 0,
-    packaging: 0,
+    packaging: 2.40,
     profitPercentage: 0,
-    gatewayCommission: 0,
+    gatewayCommission: 7.50,
     igv: 0,
     variations: [],
+    stock: 0,
+    stockByVariation: {},
   });
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,6 +82,8 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
         igv: product.igv,
         imageId: product.imageId,
         variations: product.variations || [],
+        stock: product.stock || 0,
+        stockByVariation: product.stockByVariation || {},
       });
     }
   }, [product]);
@@ -107,6 +114,23 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
       priceWithoutGateway,
     });
   }, [formData]);
+
+  // Calcular stock total automáticamente cuando cambien las variaciones
+  useEffect(() => {
+    if (formData.stockByVariation && Object.keys(formData.stockByVariation).length > 0) {
+      let totalStock = 0;
+      for (const variationName in formData.stockByVariation) {
+        const variation = formData.stockByVariation[variationName];
+        for (const value in variation) {
+          totalStock += variation[value] || 0;
+        }
+      }
+      setFormData(prev => ({
+        ...prev,
+        stock: totalStock,
+      }));
+    }
+  }, [formData.stockByVariation]);
 
   const handleInputChange = (field: keyof ProductFormData, value: string | number) => {
     setFormData(prev => ({
@@ -585,6 +609,72 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Stock */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Stock</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Stock Total
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.stock}
+                  onChange={(e) => handleNumericInputChange('stock', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="Cantidad en stock"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Stock total del producto (se actualiza automáticamente con órdenes y ventas)
+                </p>
+              </div>
+              
+              {formData.variations && formData.variations.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Stock por Variaciones
+                  </label>
+                  <div className="space-y-3">
+                    {formData.variations.map((variation, variationIndex) => (
+                      <div key={variationIndex} className="border border-gray-200 rounded-lg p-3">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">{variation.name}</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {variation.values.map((value, valueIndex) => (
+                            <div key={valueIndex} className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-600 w-16 truncate">{value}:</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={formData.stockByVariation?.[variation.name]?.[value] || 0}
+                                onChange={(e) => {
+                                  const newStockByVariation = { ...formData.stockByVariation };
+                                  if (!newStockByVariation[variation.name]) {
+                                    newStockByVariation[variation.name] = {};
+                                  }
+                                  newStockByVariation[variation.name][value] = parseInt(e.target.value) || 0;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    stockByVariation: newStockByVariation,
+                                  }));
+                                }}
+                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-green-500 focus:border-green-500"
+                                placeholder="0"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    El stock total se calcula automáticamente como la suma de todas las variaciones
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

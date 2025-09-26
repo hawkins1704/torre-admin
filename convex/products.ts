@@ -2,6 +2,43 @@ import type { PaginationOptions } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// Función auxiliar para calcular stock total desde stockByVariation
+function calculateTotalStock(stockByVariation: any): number {
+  if (!stockByVariation) return 0;
+  
+  let total = 0;
+  for (const variationName in stockByVariation) {
+    const variation = stockByVariation[variationName];
+    for (const value in variation) {
+      total += variation[value] || 0;
+    }
+  }
+  return total;
+}
+
+// Función auxiliar para actualizar stock por variación
+function updateStockByVariation(
+  currentStock: any, 
+  variations: Array<{name: string, value: string, quantity: number}>, 
+  operation: 'add' | 'subtract'
+): any {
+  const newStock = currentStock ? { ...currentStock } : {};
+  
+  for (const variation of variations) {
+    const { name, value, quantity } = variation;
+    
+    if (!newStock[name]) {
+      newStock[name] = {};
+    }
+    
+    const currentValue = newStock[name][value] || 0;
+    const change = operation === 'add' ? quantity : -quantity;
+    newStock[name][value] = Math.max(0, currentValue + change);
+  }
+  
+  return newStock;
+}
+
 // Obtener todos los productos con información de categoría (paginado)
 export const getAll = query({
   args: {
@@ -95,6 +132,8 @@ export const create = mutation({
       name: v.string(),
       values: v.array(v.string()),
     }))),
+    stock: v.optional(v.number()),
+    stockByVariation: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -113,6 +152,15 @@ export const create = mutation({
     const priceWithoutGateway = desiredNetIncome + args.igv;
     const finalPriceWithoutGateway = Math.ceil(priceWithoutGateway);
     
+    // Manejo del stock
+    let stock = args.stock || 0;
+    let stockByVariation = args.stockByVariation;
+    
+    // Si se proporciona stockByVariation, calcular el stock total
+    if (stockByVariation) {
+      stock = calculateTotalStock(stockByVariation);
+    }
+    
     return await ctx.db.insert("products", {
       // Campos de entrada
       code: args.code,
@@ -126,6 +174,8 @@ export const create = mutation({
       igv: args.igv,
       imageId: args.imageId,
       variations: args.variations,
+      stock,
+      stockByVariation,
       
       // Campos calculados
       totalCost,
@@ -162,6 +212,8 @@ export const update = mutation({
       name: v.string(),
       values: v.array(v.string()),
     }))),
+    stock: v.optional(v.number()),
+    stockByVariation: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -180,6 +232,15 @@ export const update = mutation({
     const priceWithoutGateway = desiredNetIncome + args.igv;
     const finalPriceWithoutGateway = Math.ceil(priceWithoutGateway);
     
+    // Manejo del stock
+    let stock = args.stock;
+    let stockByVariation = args.stockByVariation;
+    
+    // Si se proporciona stockByVariation, calcular el stock total
+    if (stockByVariation !== undefined) {
+      stock = calculateTotalStock(stockByVariation);
+    }
+    
     return await ctx.db.patch(args.id, {
       // Campos de entrada
       code: args.code,
@@ -193,6 +254,8 @@ export const update = mutation({
       igv: args.igv,
       imageId: args.imageId,
       variations: args.variations,
+      stock,
+      stockByVariation,
       
       // Campos calculados
       totalCost,
@@ -379,5 +442,147 @@ export const getImageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
     return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
+// Actualizar stock de un producto (para órdenes)
+export const updateStockFromOrder = mutation({
+  args: {
+    productId: v.id("products"),
+    quantity: v.number(),
+    variations: v.optional(v.array(v.object({
+      name: v.string(),
+      value: v.string(),
+      quantity: v.number(),
+    }))),
+  },
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId);
+    if (!product) {
+      throw new Error("Producto no encontrado");
+    }
+    
+    const now = Date.now();
+    let newStock = product.stock + args.quantity;
+    let newStockByVariation = product.stockByVariation;
+    
+    // Si hay variaciones, actualizar stock por variación
+    if (args.variations && args.variations.length > 0) {
+      newStockByVariation = updateStockByVariation(
+        product.stockByVariation,
+        args.variations,
+        'add'
+      );
+      // Recalcular stock total
+      newStock = calculateTotalStock(newStockByVariation);
+    }
+    
+    return await ctx.db.patch(args.productId, {
+      stock: newStock,
+      stockByVariation: newStockByVariation,
+      updatedAt: now,
+    });
+  },
+});
+
+// Actualizar stock de un producto (para ventas)
+export const updateStockFromSale = mutation({
+  args: {
+    productId: v.id("products"),
+    quantity: v.number(),
+    variations: v.optional(v.array(v.object({
+      name: v.string(),
+      value: v.string(),
+      quantity: v.number(),
+    }))),
+  },
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId);
+    if (!product) {
+      throw new Error("Producto no encontrado");
+    }
+    
+    // Validar que hay suficiente stock
+    if (product.stock < args.quantity) {
+      throw new Error(`Stock insuficiente. Disponible: ${product.stock}, Solicitado: ${args.quantity}`);
+    }
+    
+    // Si hay variaciones, validar stock por variación
+    if (args.variations && args.variations.length > 0) {
+      for (const variation of args.variations) {
+        const currentStock = product.stockByVariation?.[variation.name]?.[variation.value] || 0;
+        if (currentStock < variation.quantity) {
+          throw new Error(`Stock insuficiente para ${variation.name}: ${variation.value}. Disponible: ${currentStock}, Solicitado: ${variation.quantity}`);
+        }
+      }
+    }
+    
+    const now = Date.now();
+    let newStock = product.stock - args.quantity;
+    let newStockByVariation = product.stockByVariation;
+    
+    // Si hay variaciones, actualizar stock por variación
+    if (args.variations && args.variations.length > 0) {
+      newStockByVariation = updateStockByVariation(
+        product.stockByVariation,
+        args.variations,
+        'subtract'
+      );
+      // Recalcular stock total
+      newStock = calculateTotalStock(newStockByVariation);
+    }
+    
+    return await ctx.db.patch(args.productId, {
+      stock: newStock,
+      stockByVariation: newStockByVariation,
+      updatedAt: now,
+    });
+  },
+});
+
+// Validar stock antes de una venta
+export const validateStockForSale = query({
+  args: {
+    productId: v.id("products"),
+    quantity: v.number(),
+    variations: v.optional(v.array(v.object({
+      name: v.string(),
+      value: v.string(),
+      quantity: v.number(),
+    }))),
+  },
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId);
+    if (!product) {
+      return { valid: false, error: "Producto no encontrado" };
+    }
+    
+    // Validar stock total
+    if (product.stock < args.quantity) {
+      return { 
+        valid: false, 
+        error: `Stock insuficiente. Disponible: ${product.stock}, Solicitado: ${args.quantity}`,
+        availableStock: product.stock,
+        requestedStock: args.quantity
+      };
+    }
+    
+    // Si hay variaciones, validar stock por variación
+    if (args.variations && args.variations.length > 0) {
+      for (const variation of args.variations) {
+        const currentStock = product.stockByVariation?.[variation.name]?.[variation.value] || 0;
+        if (currentStock < variation.quantity) {
+          return { 
+            valid: false, 
+            error: `Stock insuficiente para ${variation.name}: ${variation.value}. Disponible: ${currentStock}, Solicitado: ${variation.quantity}`,
+            availableStock: currentStock,
+            requestedStock: variation.quantity,
+            variation: variation
+          };
+        }
+      }
+    }
+    
+    return { valid: true };
   },
 });

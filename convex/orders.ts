@@ -1,6 +1,7 @@
 import type { PaginationOptions } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 // Obtener todas las órdenes (paginado)
 export const getAll = query({
@@ -89,7 +90,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     
-    return await ctx.db.insert("orders", {
+    // Crear la orden
+    const orderId = await ctx.db.insert("orders", {
       orderNumber: args.orderNumber,
       orderDate: args.orderDate,
       supplier: args.supplier,
@@ -98,6 +100,17 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    
+    // Actualizar stock de cada producto
+    for (const productOrder of args.products) {
+      await ctx.runMutation(api.products.updateStockFromOrder, {
+        productId: productOrder.productId,
+        quantity: productOrder.quantity,
+        variations: productOrder.variations,
+      });
+    }
+    
+    return orderId;
   },
 });
 
@@ -124,6 +137,30 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     
+    // Obtener la orden actual para comparar productos
+    const currentOrder = await ctx.db.get(args.id);
+    if (!currentOrder) {
+      throw new Error("Orden no encontrada");
+    }
+    
+    // Revertir stock de productos anteriores
+    for (const productOrder of currentOrder.products) {
+      await ctx.runMutation(api.products.updateStockFromOrder, {
+        productId: productOrder.productId,
+        quantity: -productOrder.quantity, // Restar stock
+        variations: productOrder.variations,
+      });
+    }
+    
+    // Aplicar stock de productos nuevos
+    for (const productOrder of args.products) {
+      await ctx.runMutation(api.products.updateStockFromOrder, {
+        productId: productOrder.productId,
+        quantity: productOrder.quantity,
+        variations: productOrder.variations,
+      });
+    }
+    
     return await ctx.db.patch(args.id, {
       orderNumber: args.orderNumber,
       orderDate: args.orderDate,
@@ -139,6 +176,21 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("orders") },
   handler: async (ctx, args) => {
+    // Obtener la orden antes de eliminarla
+    const order = await ctx.db.get(args.id);
+    if (!order) {
+      throw new Error("Orden no encontrada");
+    }
+    
+    // Revertir stock de productos
+    for (const productOrder of order.products) {
+      await ctx.runMutation(api.products.updateStockFromOrder, {
+        productId: productOrder.productId,
+        quantity: -productOrder.quantity, // Restar stock
+        variations: productOrder.variations,
+      });
+    }
+    
     return await ctx.db.delete(args.id);
   },
 });

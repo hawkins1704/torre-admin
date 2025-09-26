@@ -35,6 +35,10 @@ export default defineSchema({
       values: v.array(v.string()), // Ej: ["Rojo", "Azul", "Verde"]
     }))),
     
+    // Stock del producto
+    stock: v.number(), // Stock total (suma de todas las variaciones)
+    stockByVariation: v.optional(v.any()), // { "Talla": { "S": 10, "M": 15 }, "Color": { "Rojo": 5 } }
+    
     // Campos calculados
     totalCost: v.number(),
     profitAmount: v.number(),

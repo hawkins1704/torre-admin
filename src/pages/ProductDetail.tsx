@@ -179,10 +179,65 @@ const ProductDetail = () => {
                   {product.category?.name || 'Sin categoría'}
                 </span>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                <div className="flex items-center space-x-2">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    product.stock === 0 
+                      ? 'bg-red-100 text-red-800' 
+                      : product.stock < 10 
+                      ? 'bg-yellow-100 text-yellow-800' 
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    {product.stock} unidades
+                  </span>
+                  {product.stock === 0 && (
+                    <span className="text-xs text-red-600 font-medium">Sin stock</span>
+                  )}
+                  {product.stock > 0 && product.stock < 10 && (
+                    <span className="text-xs text-yellow-600 font-medium">Stock bajo</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Sección de Stock por Variaciones (si aplica) */}
+      {product.variations && product.variations.length > 0 && product.stockByVariation && (
+        <div className="mb-8">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Stock por Variaciones</h2>
+            <div className="space-y-4">
+              {product.variations.map((variation) => (
+                <div key={variation.name}>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">{variation.name}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {variation.values.map((value) => {
+                      const stock = product.stockByVariation?.[variation.name]?.[value] || 0;
+                      return (
+                        <span
+                          key={value}
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            stock === 0 
+                              ? 'bg-red-100 text-red-800' 
+                              : stock < 5 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}
+                        >
+                          {value}: {stock}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Segunda fila: Costos, Porcentajes y Precios */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
