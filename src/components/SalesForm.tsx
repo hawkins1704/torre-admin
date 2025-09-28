@@ -39,7 +39,7 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
   const [formData, setFormData] = useState<SalesFormData>({
     saleNumber: '',
     saleDate: Date.now(),
-    customerName: '',
+    customerName: 'Clientes Varios',
     customerNumber: '',
     customerAddress: '',
     shippingCost: 0,
@@ -412,7 +412,7 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Costo de Envío
+                  Costo de Envío (en caso de que Torre pague en vez del cliente)
                 </label>
                 <input
                   type="number"
