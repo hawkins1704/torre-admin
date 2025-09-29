@@ -114,4 +114,18 @@ export default defineSchema({
     .index("by_created_at", ["createdAt"])
     .index("by_sale_number", ["saleNumber"])
     .index("by_sales_channel", ["salesChannel"]),
+
+  financial_transactions: defineTable({
+    transactionNumber: v.string(),
+    date: v.number(), // Fecha de la transacción
+    type: v.union(v.literal("income"), v.literal("expense")),
+    description: v.string(),
+    amount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_created_at", ["createdAt"])
+    .index("by_date", ["date"])
+    .index("by_type", ["type"])
+    .index("by_transaction_number", ["transactionNumber"]),
 });

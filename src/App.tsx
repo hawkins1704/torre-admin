@@ -1,6 +1,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
 import Productos from './pages/Productos';
 import ProductDetail from './pages/ProductDetail';
 import Categorias from './pages/Categorias';
@@ -11,13 +12,16 @@ import Ordenes from './pages/Ordenes';
 import OrderDetail from './pages/OrderDetail';
 import Ventas from './pages/Ventas';
 import SalesDetail from './pages/SalesDetail';
+import Finanzas from './pages/Finanzas';
+import FinancialDetail from './pages/FinancialDetail';
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/productos" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="productos" element={<Productos />} />
           <Route path="productos/:id" element={<ProductDetail />} />
           <Route path="categorias" element={<Categorias />} />
@@ -30,6 +34,8 @@ function App() {
           <Route path="ordenes/:id" element={<OrderDetail />} />
           <Route path="ventas" element={<Ventas />} />
           <Route path="ventas/:id" element={<SalesDetail />} />
+          <Route path="finanzas" element={<Finanzas />} />
+          <Route path="finanzas/:id" element={<FinancialDetail />} />
         </Route>
       </Routes>
     </Router>

@@ -586,3 +586,38 @@ export const validateStockForSale = query({
     return { valid: true };
   },
 });
+
+// ===== FUNCIONES PARA DASHBOARD =====
+
+// Obtener estado del inventario
+export const getInventoryStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").collect();
+    
+    const lowStockProducts = products.filter(p => p.stock > 0 && p.stock < 10);
+    const outOfStockProducts = products.filter(p => p.stock === 0);
+    const totalInventoryValue = products.reduce((sum, p) => sum + (p.stock * p.totalCost), 0);
+    const totalProducts = products.length;
+    
+    return {
+      totalProducts,
+      totalInventoryValue,
+      lowStockProducts: lowStockProducts.map(p => ({
+        id: p._id,
+        name: p.name,
+        code: p.code,
+        stock: p.stock,
+        category: p.categoryId, // Se puede expandir para obtener nombre de categoría
+      })),
+      outOfStockProducts: outOfStockProducts.map(p => ({
+        id: p._id,
+        name: p.name,
+        code: p.code,
+        category: p.categoryId,
+      })),
+      lowStockCount: lowStockProducts.length,
+      outOfStockCount: outOfStockProducts.length,
+    };
+  },
+});

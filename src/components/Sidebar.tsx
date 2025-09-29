@@ -11,11 +11,13 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps)
   const location = useLocation();
 
   const menuItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/productos', label: 'Productos', icon: '📦' },
     { path: '/categorias', label: 'Categorías', icon: '🏷️' },
     { path: '/proveedores', label: 'Proveedores', icon: '🏢' },
     { path: '/ordenes', label: 'Órdenes', icon: '📋' },
     { path: '/ventas', label: 'Ventas', icon: '💰' },
+    { path: '/finanzas', label: 'Finanzas', icon: '💳' },
   ];
 
   return (

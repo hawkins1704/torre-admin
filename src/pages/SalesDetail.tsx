@@ -12,6 +12,11 @@ const SalesDetail = () => {
   const sale = useQuery(api.sales.getById, { id: saleId });
   const removeSale = useMutation(api.sales.remove);
 
+  const handleEdit = () => {
+    // TODO: Implementar funcionalidad de edición
+    console.log('Editar venta:', saleId);
+  };
+
   const handleDelete = () => {
     setShowDeleteConfirm(true);
   };
@@ -94,8 +99,14 @@ const SalesDetail = () => {
           </div>
           <div className="flex space-x-2">
             <button
+              onClick={handleEdit}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
+            >
+              Editar
+            </button>
+            <button
               onClick={handleDelete}
-              className="px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
             >
               Eliminar
             </button>
@@ -155,7 +166,7 @@ const SalesDetail = () => {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Productos</h2>
               <div className="space-y-4">
-                {sale.products.map((productSale, index) => (
+                {sale.products.map((productSale: { product: { name: string; code: string }; totalPrice: number; quantity: number; variations: { name: string; value: string; quantity: number }[] }, index: number) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>
@@ -171,7 +182,7 @@ const SalesDetail = () => {
                           {formatCurrency(productSale.totalPrice)}
                         </p>
                         <p className="text-sm text-gray-600">
-                          {productSale.quantity} × {formatCurrency(productSale.unitPrice)}
+                          {productSale.quantity} × {formatCurrency(productSale.totalPrice)}
                         </p>
                       </div>
                     </div>
@@ -252,7 +263,7 @@ const SalesDetail = () => {
 
         {/* Modal de confirmación de eliminación */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
               <div className="mt-3 text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">

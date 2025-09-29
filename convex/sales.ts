@@ -337,3 +337,256 @@ export const remove = mutation({
     return await ctx.db.delete(args.id);
   },
 });
+
+// ===== FUNCIONES PARA DASHBOARD =====
+
+// Obtener métricas de ventas por mes
+export const getSalesMetricsByMonth = query({
+  args: {
+    month: v.number(), // 1-12
+    year: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
+    const endOfMonth = new Date(args.year, args.month, 0, 23, 59, 59, 999).getTime();
+    
+    const sales = await ctx.db
+      .query("sales")
+      .withIndex("by_created_at")
+      .filter(q => 
+        q.and(
+          q.gte(q.field("saleDate"), startOfMonth),
+          q.lte(q.field("saleDate"), endOfMonth)
+        )
+      )
+      .collect();
+    
+    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalShippingCost = sales.reduce((sum, sale) => sum + sale.shippingCost, 0);
+    const totalDiscounts = sales.reduce((sum, sale) => sum + sale.discountAmount, 0);
+    
+    return {
+      totalSales,
+      totalShippingCost,
+      totalDiscounts,
+      salesCount: sales.length,
+      averageSaleAmount: sales.length > 0 ? totalSales / sales.length : 0,
+      sales: sales.sort((a, b) => b.saleDate - a.saleDate),
+    };
+  },
+});
+
+// Obtener ventas por canal
+export const getSalesByChannel = query({
+  args: {
+    month: v.number(),
+    year: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
+    const endOfMonth = new Date(args.year, args.month, 0, 23, 59, 59, 999).getTime();
+    
+    const sales = await ctx.db
+      .query("sales")
+      .withIndex("by_created_at")
+      .filter(q => 
+        q.and(
+          q.gte(q.field("saleDate"), startOfMonth),
+          q.lte(q.field("saleDate"), endOfMonth)
+        )
+      )
+      .collect();
+    
+    const channelStats: Record<string, { amount: number; count: number }> = {};
+    
+    sales.forEach(sale => {
+      if (!channelStats[sale.salesChannel]) {
+        channelStats[sale.salesChannel] = { amount: 0, count: 0 };
+      }
+      channelStats[sale.salesChannel].amount += sale.totalAmount;
+      channelStats[sale.salesChannel].count += 1;
+    });
+    
+    return Object.entries(channelStats).map(([channel, stats]) => ({
+      channel,
+      amount: stats.amount,
+      count: stats.count,
+      percentage: sales.length > 0 ? (stats.count / sales.length) * 100 : 0,
+    }));
+  },
+});
+
+// Obtener top productos más vendidos
+export const getTopSellingProducts = query({
+  args: {
+    month: v.number(),
+    year: v.number(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 3;
+    const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
+    const endOfMonth = new Date(args.year, args.month, 0, 23, 59, 59, 999).getTime();
+    
+    const sales = await ctx.db
+      .query("sales")
+      .withIndex("by_created_at")
+      .filter(q => 
+        q.and(
+          q.gte(q.field("saleDate"), startOfMonth),
+          q.lte(q.field("saleDate"), endOfMonth)
+        )
+      )
+      .collect();
+    
+    const productStats: Record<string, { 
+      productId: string; 
+      quantity: number; 
+      amount: number; 
+      name: string;
+      code: string;
+    }> = {};
+    
+    // Procesar todas las ventas y agregar productos
+    for (const sale of sales) {
+      for (const productSale of sale.products) {
+        const product = await ctx.db.get(productSale.productId);
+        if (product) {
+          const key = product._id;
+          if (!productStats[key]) {
+            productStats[key] = {
+              productId: product._id,
+              quantity: 0,
+              amount: 0,
+              name: product.name,
+              code: product.code,
+            };
+          }
+          productStats[key].quantity += productSale.quantity;
+          productStats[key].amount += productSale.totalPrice;
+        }
+      }
+    }
+    
+    return Object.values(productStats)
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, limit);
+  },
+});
+
+// Obtener top productos más rentables (por margen de ganancia)
+export const getTopProfitableProducts = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 3;
+    
+    // Obtener todos los productos
+    const products = await ctx.db.query("products").collect();
+    
+    // Ordenar por margen de ganancia (profitPercentage) y tomar los top
+    const topProfitableProducts = products
+      .map(product => ({
+        productId: product._id,
+        name: product.name,
+        code: product.code,
+        profitPercentage: product.profitPercentage,
+        finalPrice: product.finalPrice,
+        totalCost: product.totalCost,
+        profitAmount: product.profitAmount,
+        stock: product.stock,
+      }))
+      .sort((a, b) => b.profitPercentage - a.profitPercentage)
+      .slice(0, limit);
+    
+    return topProfitableProducts;
+  },
+});
+
+// Obtener métricas completas del dashboard
+export const getDashboardMetrics = query({
+  args: {
+    month: v.number(),
+    year: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Calcular fechas del mes una sola vez
+    const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
+    const endOfMonth = new Date(args.year, args.month, 0, 23, 59, 59, 999).getTime();
+    
+    // Obtener métricas de ventas
+    const sales = await ctx.db
+      .query("sales")
+      .withIndex("by_created_at")
+      .filter(q => 
+        q.and(
+          q.gte(q.field("saleDate"), startOfMonth),
+          q.lte(q.field("saleDate"), endOfMonth)
+        )
+      )
+      .collect();
+    
+    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalShippingCost = sales.reduce((sum, sale) => sum + sale.shippingCost, 0);
+    const totalDiscounts = sales.reduce((sum, sale) => sum + sale.discountAmount, 0);
+    
+    const salesMetrics = {
+      totalSales,
+      totalShippingCost,
+      totalDiscounts,
+      salesCount: sales.length,
+      averageSaleAmount: sales.length > 0 ? totalSales / sales.length : 0,
+      sales: sales.sort((a, b) => b.saleDate - a.saleDate),
+    };
+    
+    // Obtener métricas financieras adicionales
+    const financialMetrics = await ctx.runQuery(api.financial_transactions.getMetricsByMonth, args);
+    
+    // Obtener métricas de órdenes (gastos de productos)
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_created_at")
+      .filter(q => 
+        q.and(
+          q.gte(q.field("orderDate"), startOfMonth),
+          q.lte(q.field("orderDate"), endOfMonth)
+        )
+      )
+      .collect();
+    
+    const totalOrderCosts = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    
+    // Calcular totales
+    const totalIncome = salesMetrics.totalSales + financialMetrics.totalIncome;
+    const totalExpenses = totalOrderCosts + salesMetrics.totalShippingCost + financialMetrics.totalExpenses;
+    const netProfit = totalIncome - totalExpenses;
+    
+    return {
+      // Ingresos
+      salesIncome: salesMetrics.totalSales,
+      additionalIncome: financialMetrics.totalIncome,
+      totalIncome,
+      
+      // Gastos
+      productCosts: totalOrderCosts,
+      shippingCosts: salesMetrics.totalShippingCost,
+      additionalExpenses: financialMetrics.totalExpenses,
+      totalExpenses,
+      
+      // Ganancia
+      netProfit,
+      profitMargin: totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0,
+      
+      // Contadores
+      salesCount: salesMetrics.salesCount,
+      ordersCount: orders.length,
+      incomeTransactionsCount: financialMetrics.incomeCount,
+      expenseTransactionsCount: financialMetrics.expenseCount,
+      
+      // Comparación con mes anterior
+      previousMonth: args.month > 1 ? args.month - 1 : 12,
+      previousYear: args.month > 1 ? args.year : args.year - 1,
+    };
+  },
+});

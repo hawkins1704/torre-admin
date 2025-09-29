@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+import ProductImage from './ProductImage';
 
 interface SalesFormProps {
   saleId?: Id<'sales'>;
@@ -103,6 +104,13 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
       totalAmount: total 
     }));
   }, [formData.products, formData.shippingCost, formData.discountAmount]);
+
+  // Verificar si hay productos sin stock
+  const hasOutOfStockProducts = formData.products.some(product => {
+    if (!product.productId) return false;
+    const selectedProduct = products?.find(p => p._id === product.productId);
+    return selectedProduct && selectedProduct.stock < product.quantity;
+  });
 
   const handleInputChange = (field: keyof SalesFormData, value: string | number) => {
     setFormData(prev => ({
@@ -486,19 +494,32 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Producto *
                         </label>
-                        <select
-                          value={product.productId}
-                          onChange={(e) => updateProduct(productIndex, 'productId', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                          required
-                        >
-                          <option value="">Seleccionar producto</option>
-                          {products?.map((p) => (
-                            <option key={p._id} value={p._id}>
-                              {p.name} - {p.code}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            value={product.productId}
+                            onChange={(e) => updateProduct(productIndex, 'productId', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            required
+                          >
+                            <option value="">Seleccionar producto</option>
+                            {products?.map((p) => (
+                              <option key={p._id} value={p._id}>
+                                {p.name} - {p.code}
+                              </option>
+                            ))}
+                          </select>
+                          
+                          {/* Mostrar imagen del producto seleccionado */}
+                          {product.productId && (
+                            <div className="absolute right-6 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                              <ProductImage 
+                                imageId={products?.find(p => p._id === product.productId)?.imageId} 
+                                className="w-8 h-8 rounded border border-gray-200"
+                                alt={products?.find(p => p._id === product.productId)?.name || ''}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div>
@@ -576,7 +597,35 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                               {formData.salesChannel === 'SHOPIFY' ? 'Con Pasarela' : 'Sin Pasarela'}
                             </span>
                           </div>
+                          <div>
+                            <span className="text-gray-600">Stock disponible:</span>
+                            <span className={`ml-2 font-medium ${
+                              (products?.find(p => p._id === product.productId)?.stock || 0) < product.quantity
+                                ? 'text-red-600'
+                                : 'text-green-600'
+                            }`}>
+                              {products?.find(p => p._id === product.productId)?.stock || 0} unidades
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Cantidad solicitada:</span>
+                            <span className="ml-2 font-medium">{product.quantity} unidades</span>
+                          </div>
                         </div>
+                        
+                        {/* Mensaje de error si no hay stock suficiente */}
+                        {products?.find(p => p._id === product.productId) && 
+                         (products?.find(p => p._id === product.productId)?.stock || 0) < product.quantity && (
+                          <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded">
+                            <p className="text-sm text-red-600 font-medium">
+                              ⚠️ El producto seleccionado no tiene stock suficiente
+                            </p>
+                            <p className="text-xs text-red-500 mt-1">
+                              Stock disponible: {products?.find(p => p._id === product.productId)?.stock || 0} unidades | 
+                              Cantidad solicitada: {product.quantity} unidades
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -711,6 +760,25 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
             )}
           </div>
 
+          {/* Mensaje de error general si hay productos sin stock */}
+          {hasOutOfStockProducts && (
+            <div className="border-t pt-6">
+              <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <p className="text-red-800 font-medium">
+                    No se puede crear la venta: Hay productos sin stock suficiente
+                  </p>
+                </div>
+                <p className="text-red-600 text-sm mt-1">
+                  Ajusta las cantidades o selecciona otros productos para continuar
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Resumen */}
           <div className="border-t pt-6">
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -749,8 +817,12 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
             </button>
             <button
               type="submit"
-              disabled={isSaving}
-              className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              disabled={isSaving || hasOutOfStockProducts}
+              className={`px-4 py-2 rounded-lg transition-colors disabled:cursor-not-allowed flex items-center space-x-2 ${
+                hasOutOfStockProducts 
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              } ${isSaving ? 'opacity-50' : ''}`}
             >
               {isSaving && (
                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
