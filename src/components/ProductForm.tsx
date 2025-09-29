@@ -117,6 +117,7 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
 
   // Calcular stock total automáticamente cuando cambien las variaciones
   useEffect(() => {
+    // Si hay variaciones, calcular automáticamente el stock total
     if (formData.stockByVariation && Object.keys(formData.stockByVariation).length > 0) {
       let totalStock = 0;
       for (const variationName in formData.stockByVariation) {
@@ -165,6 +166,11 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
       ...prev,
       [field]: finalValue,
     }));
+  };
+
+  // Función específica para manejar el cambio manual del stock
+  const handleStockChange = (value: string) => {
+    handleNumericInputChange('stock', value);
   };
 
   // Funciones para manejar variaciones
@@ -624,12 +630,20 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
                   type="number"
                   min="0"
                   value={formData.stock}
-                  onChange={(e) => handleNumericInputChange('stock', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  onChange={(e) => handleStockChange(e.target.value)}
+                  disabled={formData.variations && formData.variations.length > 0}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                    formData.variations && formData.variations.length > 0
+                      ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-300'
+                  }`}
                   placeholder="Cantidad en stock"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Stock total del producto (se actualiza automáticamente con órdenes y ventas)
+                  {formData.variations && formData.variations.length > 0
+                    ? 'Stock total se calcula automáticamente desde las variaciones'
+                    : 'Stock total del producto (se actualiza automáticamente con órdenes y ventas)'
+                  }
                 </p>
               </div>
               

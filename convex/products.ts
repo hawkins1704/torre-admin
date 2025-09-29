@@ -157,8 +157,8 @@ export const create = mutation({
     let stock = args.stock || 0;
     const stockByVariation = args.stockByVariation;
     
-    // Si se proporciona stockByVariation, calcular el stock total
-    if (stockByVariation) {
+    // Solo calcular automáticamente si hay datos reales en stockByVariation
+    if (stockByVariation && Object.keys(stockByVariation).length > 0) {
       stock = calculateTotalStock(stockByVariation);
     }
     
@@ -237,8 +237,8 @@ export const update = mutation({
     let stock = args.stock;
     const stockByVariation = args.stockByVariation;
     
-    // Si se proporciona stockByVariation, calcular el stock total
-    if (stockByVariation !== undefined) {
+    // Solo calcular automáticamente si hay datos reales en stockByVariation
+    if (stockByVariation && Object.keys(stockByVariation).length > 0) {
       stock = calculateTotalStock(stockByVariation);
     }
     
@@ -469,10 +469,12 @@ export const updateStockFromOrder = mutation({
     
     // Si hay variaciones, actualizar stock por variación
     if (args.variations && args.variations.length > 0) {
+      // Determinar la operación basada en el signo de la cantidad
+      const operation = args.quantity >= 0 ? 'add' : 'subtract';
       newStockByVariation = updateStockByVariation(
         product.stockByVariation,
         args.variations,
-        'add'
+        operation
       );
       // Recalcular stock total
       newStock = calculateTotalStock(newStockByVariation);
