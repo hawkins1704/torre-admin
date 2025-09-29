@@ -166,7 +166,7 @@ const SalesDetail = () => {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Productos</h2>
               <div className="space-y-4">
-                {sale.products.map((productSale: { product: { name: string; code: string }; totalPrice: number; quantity: number; variations: { name: string; value: string; quantity: number }[] }, index: number) => (
+                {sale.products.map((productSale, index: number) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>
@@ -182,7 +182,7 @@ const SalesDetail = () => {
                           {formatCurrency(productSale.totalPrice)}
                         </p>
                         <p className="text-sm text-gray-600">
-                          {productSale.quantity} × {formatCurrency(productSale.totalPrice)}
+                          {productSale.quantity} × {formatCurrency(productSale.unitPrice)}
                         </p>
                       </div>
                     </div>

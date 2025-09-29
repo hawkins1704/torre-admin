@@ -104,7 +104,7 @@ const OrderForm = ({ orderId, onSuccess, onCancel }: OrderFormProps) => {
     }));
   };
 
-  const updateProduct = (index: number, field: keyof OrderProduct, value: any) => {
+  const updateProduct = (index: number, field: keyof OrderProduct, value: string | number | Array<{name: string, value: string, quantity: number}>) => {
     setFormData(prev => ({
       ...prev,
       products: prev.products.map((product, i) => {
@@ -184,7 +184,7 @@ const OrderForm = ({ orderId, onSuccess, onCancel }: OrderFormProps) => {
     }));
   };
 
-  const updateVariation = (productIndex: number, variationIndex: number, field: string, value: any) => {
+  const updateVariation = (productIndex: number, variationIndex: number, field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       products: prev.products.map((product, i) => {

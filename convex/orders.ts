@@ -2,6 +2,7 @@ import type { PaginationOptions } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 // Obtener todas las órdenes (paginado)
 export const getAll = query({
@@ -241,7 +242,7 @@ export const search = query({
       order.products.map(p => p.productId)
     ))];
     const products = await Promise.all(
-      productIds.map(id => ctx.db.get(id))
+      productIds.map(id => ctx.db.get(id as Id<"products">))
     );
     const productMap = new Map(
       products.filter(Boolean).map(product => [product!._id, product])

@@ -1,3 +1,4 @@
+import type { PaginationOptions } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -22,7 +23,7 @@ export const getAll = query({
     return await ctx.db.query("financial_transactions")
       .withIndex("by_created_at")
       .order("desc")
-      .paginate(paginationOpts);
+      .paginate(paginationOpts as PaginationOptions);
   },
 });
 
@@ -149,18 +150,27 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
     
+    const updateData: {
+      type?: "income" | "expense";
+      description?: string;
+      amount?: number;
+      date?: number;
+      transactionNumber?: string;
+      updatedAt: number;
+    } = {
+      ...updates,
+      updatedAt: Date.now(),
+    };
+    
     // Si cambia el tipo, generar nuevo número de transacción
     if (updates.type) {
       const currentTransaction = await ctx.db.get(id);
       if (currentTransaction && currentTransaction.type !== updates.type) {
-        updates.transactionNumber = generateTransactionNumber(updates.type);
+        updateData.transactionNumber = generateTransactionNumber(updates.type);
       }
     }
     
-    return await ctx.db.patch(id, {
-      ...updates,
-      updatedAt: Date.now(),
-    });
+    return await ctx.db.patch(id, updateData);
   },
 });
 
@@ -177,14 +187,60 @@ export const getMonthlySummary = query({
   args: {},
   handler: async (ctx) => {
     const now = new Date();
-    const summaries = [];
+    const summaries: Array<{
+      month: number;
+      year: number;
+      monthName: string;
+      totalIncome: number;
+      totalExpenses: number;
+      netIncome: number;
+      incomeCount: number;
+      expenseCount: number;
+      transactions: Array<{
+        _id: string;
+        type: "income" | "expense";
+        description: string;
+        amount: number;
+        date: number;
+        transactionNumber: string;
+        createdAt: number;
+        updatedAt: number;
+      }>;
+    }> = [];
     
     for (let i = 0; i < 12; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const month = date.getMonth() + 1;
       const year = date.getFullYear();
       
-      const metrics = await getMetricsByMonth.handler(ctx, { month, year });
+      const startOfMonth = new Date(year, month - 1, 1).getTime();
+      const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999).getTime();
+      
+      const transactions = await ctx.db
+        .query("financial_transactions")
+        .withIndex("by_date")
+        .filter(q => 
+          q.and(
+            q.gte(q.field("date"), startOfMonth),
+            q.lte(q.field("date"), endOfMonth)
+          )
+        )
+        .collect();
+      
+      const incomeTransactions = transactions.filter(t => t.type === "income");
+      const expenseTransactions = transactions.filter(t => t.type === "expense");
+      
+      const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+      const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
+      
+      const metrics = {
+        totalIncome,
+        totalExpenses,
+        netIncome: totalIncome - totalExpenses,
+        incomeCount: incomeTransactions.length,
+        expenseCount: expenseTransactions.length,
+        transactions: transactions.sort((a, b) => b.date - a.date),
+      };
       
       summaries.push({
         month,

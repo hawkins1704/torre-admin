@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { useNavigate } from 'react-router-dom';

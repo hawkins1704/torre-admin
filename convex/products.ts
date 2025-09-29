@@ -1,9 +1,10 @@
 import type { PaginationOptions } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 // Función auxiliar para calcular stock total desde stockByVariation
-function calculateTotalStock(stockByVariation: any): number {
+function calculateTotalStock(stockByVariation: Record<string, Record<string, number>> | null | undefined): number {
   if (!stockByVariation) return 0;
   
   let total = 0;
@@ -18,10 +19,10 @@ function calculateTotalStock(stockByVariation: any): number {
 
 // Función auxiliar para actualizar stock por variación
 function updateStockByVariation(
-  currentStock: any, 
+  currentStock: Record<string, Record<string, number>> | null | undefined, 
   variations: Array<{name: string, value: string, quantity: number}>, 
   operation: 'add' | 'subtract'
-): any {
+): Record<string, Record<string, number>> {
   const newStock = currentStock ? { ...currentStock } : {};
   
   for (const variation of variations) {
@@ -58,7 +59,7 @@ export const getAll = query({
     // Obtener información de categorías usando batch get (más eficiente)
     const categoryIds = [...new Set(productsPage.page.map(p => p.categoryId))];
     const categories = await Promise.all(
-      categoryIds.map(id => ctx.db.get(id))
+      categoryIds.map(id => ctx.db.get(id as Id<"categories">))
     );
     const categoryMap = new Map(
       categories.filter(Boolean).map(cat => [cat!._id, cat])
@@ -154,7 +155,7 @@ export const create = mutation({
     
     // Manejo del stock
     let stock = args.stock || 0;
-    let stockByVariation = args.stockByVariation;
+    const stockByVariation = args.stockByVariation;
     
     // Si se proporciona stockByVariation, calcular el stock total
     if (stockByVariation) {
@@ -234,7 +235,7 @@ export const update = mutation({
     
     // Manejo del stock
     let stock = args.stock;
-    let stockByVariation = args.stockByVariation;
+    const stockByVariation = args.stockByVariation;
     
     // Si se proporciona stockByVariation, calcular el stock total
     if (stockByVariation !== undefined) {
@@ -333,7 +334,7 @@ export const search = query({
       // Obtener información de categorías
       const categoryIds = [...new Set(uniqueResults.map(p => p.categoryId))];
       const categories = await Promise.all(
-        categoryIds.map(id => ctx.db.get(id))
+        categoryIds.map(id => ctx.db.get(id as Id<"categories">))
       );
       const categoryMap = new Map(
         categories.filter(Boolean).map(cat => [cat!._id, cat])
@@ -363,7 +364,7 @@ export const search = query({
     // Obtener información de categorías
     const categoryIds = [...new Set(products.map(p => p.categoryId))];
     const categories = await Promise.all(
-      categoryIds.map(id => ctx.db.get(id))
+      categoryIds.map(id => ctx.db.get(id as Id<"categories">))
     );
     const categoryMap = new Map(
       categories.filter(Boolean).map(cat => [cat!._id, cat])

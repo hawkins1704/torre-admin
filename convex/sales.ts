@@ -541,7 +541,13 @@ export const getDashboardMetrics = query({
     };
     
     // Obtener métricas financieras adicionales
-    const financialMetrics = await ctx.runQuery(api.financial_transactions.getMetricsByMonth, args);
+    const financialMetrics: {
+      totalIncome: number;
+      totalExpenses: number;
+      netIncome: number;
+      incomeCount: number;
+      expenseCount: number;
+    } = await ctx.runQuery(api.financial_transactions.getMetricsByMonth, args);
     
     // Obtener métricas de órdenes (gastos de productos)
     const orders = await ctx.db
@@ -562,7 +568,23 @@ export const getDashboardMetrics = query({
     const totalExpenses = totalOrderCosts + salesMetrics.totalShippingCost + financialMetrics.totalExpenses;
     const netProfit = totalIncome - totalExpenses;
     
-    return {
+    const result: {
+      salesIncome: number;
+      additionalIncome: number;
+      totalIncome: number;
+      productCosts: number;
+      shippingCosts: number;
+      additionalExpenses: number;
+      totalExpenses: number;
+      netProfit: number;
+      profitMargin: number;
+      salesCount: number;
+      ordersCount: number;
+      incomeTransactionsCount: number;
+      expenseTransactionsCount: number;
+      previousMonth: number;
+      previousYear: number;
+    } = {
       // Ingresos
       salesIncome: salesMetrics.totalSales,
       additionalIncome: financialMetrics.totalIncome,
@@ -588,5 +610,7 @@ export const getDashboardMetrics = query({
       previousMonth: args.month > 1 ? args.month - 1 : 12,
       previousYear: args.month > 1 ? args.year : args.year - 1,
     };
+
+    return result;
   },
 });

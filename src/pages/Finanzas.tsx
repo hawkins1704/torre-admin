@@ -104,10 +104,10 @@ const Finanzas = () => {
     }
   };
 
-  const handleDeleteTransaction = (transaction: { _id: Id<'financial_transactions'>; description: string }) => {
-    setTransactionToDelete(transaction);
-    setShowDeleteConfirm(true);
-  };
+  // const handleDeleteTransaction = (transaction: { _id: Id<'financial_transactions'>; description: string }) => {
+  //   setTransactionToDelete(transaction);
+  //   setShowDeleteConfirm(true);
+  // };
 
   const confirmDelete = async () => {
     if (transactionToDelete) {
