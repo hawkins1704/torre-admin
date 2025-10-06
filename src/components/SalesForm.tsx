@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import ProductImage from "./ProductImage";
+import ProductSelector from "./ProductSelector";
 
 interface SalesFormProps {
     saleId?: Id<"sales">;
@@ -28,11 +28,15 @@ interface SalesFormData {
     customerName: string;
     customerNumber: string;
     customerAddress: string;
+    district: string;
+    googleMapsUrl: string;
     shippingCost: number;
     salesChannel: string;
     products: SaleProduct[];
     subtotalAmount: number;
     discountAmount: number;
+    advancePayment: number;
+    saleStatus: "REGISTRADO" | "PREPARADO" | "COMPLETADO";
     totalAmount: number;
 }
 
@@ -43,11 +47,15 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
         customerName: "Clientes Varios",
         customerNumber: "",
         customerAddress: "",
+        district: "",
+        googleMapsUrl: "",
         shippingCost: 0,
-        salesChannel: "",
+        salesChannel: "TIKTOK",
         products: [],
         subtotalAmount: 0,
         discountAmount: 0,
+        advancePayment: 0,
+        saleStatus: "REGISTRADO",
         totalAmount: 0,
     });
     const [isSaving, setIsSaving] = useState(false);
@@ -68,6 +76,8 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                 customerName: sale.customerName,
                 customerNumber: sale.customerNumber,
                 customerAddress: sale.customerAddress,
+                district: sale.district || "",
+                googleMapsUrl: sale.googleMapsUrl || "",
                 shippingCost: sale.shippingCost,
                 salesChannel: sale.salesChannel,
                 products: sale.products.map((p) => ({
@@ -79,6 +89,8 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                 })),
                 subtotalAmount: sale.subtotalAmount,
                 discountAmount: sale.discountAmount,
+                advancePayment: sale.advancePayment || 0,
+                saleStatus: sale.saleStatus || "REGISTRADO",
                 totalAmount: sale.totalAmount,
             });
         } else if (!saleId) {
@@ -326,11 +338,15 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                 customerName: formData.customerName,
                 customerNumber: formData.customerNumber,
                 customerAddress: formData.customerAddress,
+                district: formData.district,
+                googleMapsUrl: formData.googleMapsUrl,
                 shippingCost: formData.shippingCost,
                 salesChannel: formData.salesChannel,
                 products: formData.products,
                 subtotalAmount: formData.subtotalAmount,
                 discountAmount: formData.discountAmount,
+                advancePayment: formData.advancePayment,
+                saleStatus: formData.saleStatus as "REGISTRADO" | "PREPARADO" | "COMPLETADO",
                 totalAmount: formData.totalAmount,
             };
 
@@ -364,15 +380,8 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
     };
 
     return (
-        <div className="max-w-6xl mx-auto p-6">
-            <div className="mb-8">
-                <button
-                    onClick={onCancel}
-                    className="text-green-600 hover:text-green-700 font-medium mb-4"
-                >
-                    ← Volver
-                </button>
-            </div>
+        <div className="max-w-4xl mx-auto p-6">
+           
             <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-6">
                     {saleId ? "Editar Venta" : "Crear Venta"}
@@ -380,7 +389,7 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Información básica */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Número de Venta *
@@ -433,10 +442,29 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                                 required
                             >
                                 <option value="">Seleccionar canal</option>
-                                <option value="SHOPIFY">SHOPIFY</option>
                                 <option value="MARKETPLACE">MARKETPLACE</option>
                                 <option value="INSTAGRAM">INSTAGRAM</option>
                                 <option value="TIKTOK">TIKTOK</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Estado de Venta
+                            </label>
+                            <select
+                                value={formData.saleStatus}
+                                onChange={(e) =>
+                                    handleInputChange(
+                                        "saleStatus",
+                                        e.target.value
+                                    )
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            >
+                                <option value="REGISTRADO">REGISTRADO</option>
+                                <option value="PREPARADO">PREPARADO</option>
+                                <option value="COMPLETADO">COMPLETADO</option>
                             </select>
                         </div>
                     </div>
@@ -487,7 +515,7 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
 
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Dirección
+                                    Dirección *
                                 </label>
                                 <textarea
                                     value={formData.customerAddress}
@@ -497,10 +525,89 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                                             e.target.value
                                         )
                                     }
-                                    placeholder="Dirección completa de entrega (opcional)"
+                                    placeholder="Dirección completa de entrega"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                     rows={3}
+                                    required
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Distrito *
+                                </label>
+                                <select
+                                    value={formData.district}
+                                    onChange={(e) =>
+                                        handleInputChange(
+                                            "district",
+                                            e.target.value
+                                        )
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    required
+                                >
+                                    <option value="">Seleccionar distrito</option>
+                                    <option value="ATE VITARTE">ATE VITARTE</option>
+                                    <option value="BARRANCO">BARRANCO</option>
+                                    <option value="BELLAVISTA">BELLAVISTA</option>
+                                    <option value="BREÑA">BREÑA</option>
+                                    <option value="CALLAO">CALLAO</option>
+                                    <option value="CARMEN DE LA LEGUA">CARMEN DE LA LEGUA</option>
+                                    <option value="CHORRILLOS">CHORRILLOS</option>
+                                    <option value="COMAS">COMAS</option>
+                                    <option value="EL AGUSTINO">EL AGUSTINO</option>
+                                    <option value="INDEPENDENCIA">INDEPENDENCIA</option>
+                                    <option value="JESUS MARIA">JESÚS MARÍA</option>
+                                    <option value="LA MOLINA">LA MOLINA</option>
+                                    <option value="LA PERLA">LA PERLA</option>
+                                    <option value="LA PUNTA">LA PUNTA</option>
+                                    <option value="LA VICTORIA">LA VICTORIA</option>
+                                    <option value="LINCE">LINCE</option>
+                                    <option value="LOS OLIVOS">LOS OLIVOS</option>
+                                    <option value="MAGDALENA">MAGDALENA</option>
+                                    <option value="MARQUEZ">MARQUEZ</option>
+                                    <option value="MIRAFLORES">MIRAFLORES</option>
+                                    <option value="OQUENDO">OQUENDO</option>
+                                    <option value="PUEBLO LIBRE">PUEBLO LIBRE</option>
+                                    <option value="PUENTE PIEDRA">PUENTE PIEDRA</option>
+                                    <option value="RIMAC">RÍMAC</option>
+                                    <option value="SAN BORJA">SAN BORJA</option>
+                                    <option value="SAN ISIDRO">SAN ISIDRO</option>
+                                    <option value="SAN JUAN DE MIRAFLORES">SAN JUAN DE MIRAFLORES</option>
+                                    <option value="SAN LUIS">SAN LUIS</option>
+                                    <option value="SAN MIGUEL">SAN MIGUEL</option>
+                                    <option value="SANTA ANITA">SANTA ANITA</option>
+                                    <option value="SANTA CLARA">SANTA CLARA</option>
+                                    <option value="SMP (SAN MARTIN DE PORRES)">SMP (SAN MARTÍN DE PORRES)</option>
+                                    <option value="SURCO">SURCO</option>
+                                    <option value="SURQUILLO">SURQUILLO</option>
+                                    <option value="VILLA EL SALVADOR">VILLA EL SALVADOR</option>
+                                    <option value="VILLA MARIA DEL TRIUNFO">VILLA MARÍA DEL TRIUNFO</option>
+                                    <option value="OTROS">OTROS</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    URL Google Maps *
+                                </label>
+                                <input
+                                    type="url"
+                                    value={formData.googleMapsUrl}
+                                    onChange={(e) =>
+                                        handleInputChange(
+                                            "googleMapsUrl",
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="https://maps.google.com/..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Enlace a la ubicación en Google Maps
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -510,11 +617,10 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                         <h3 className="text-lg font-medium text-gray-900 mb-4">
                             Costos Adicionales
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Costo de Envío (en caso de que Torre pague
-                                    en vez del cliente)
+                                    Costo de Envío
                                 </label>
                                 <input
                                     type="number"
@@ -574,35 +680,37 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                                     )}
                                 </p>
                             </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Adelanto Pagado
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={formData.advancePayment}
+                                    onChange={(e) =>
+                                        handleInputChange(
+                                            "advancePayment",
+                                            parseFloat(e.target.value) || 0
+                                        )
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Monto pagado por adelantado
+                                </p>
+                            </div>
                         </div>
                     </div>
 
                     {/* Productos */}
                     <div className="border-t pt-6">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="mb-4">
                             <h3 className="text-lg font-medium text-gray-900">
                                 Productos
                             </h3>
-                            <button
-                                type="button"
-                                onClick={addProduct}
-                                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
-                            >
-                                <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 4v16m8-8H4"
-                                    />
-                                </svg>
-                                <span>Agregar Producto</span>
-                            </button>
                         </div>
 
                         {formData.products.length === 0 ? (
@@ -638,74 +746,18 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                                         Producto *
                                                     </label>
-                                                    <div className="relative">
-                                                        <select
-                                                            value={
-                                                                product.productId
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateProduct(
-                                                                    productIndex,
-                                                                    "productId",
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            }
-                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                                            required
-                                                        >
-                                                            <option value="">
-                                                                Seleccionar
-                                                                producto
-                                                            </option>
-                                                            {products?.map(
-                                                                (p) => (
-                                                                    <option
-                                                                        key={
-                                                                            p._id
-                                                                        }
-                                                                        value={
-                                                                            p._id
-                                                                        }
-                                                                    >
-                                                                        {p.name}{" "}
-                                                                        -{" "}
-                                                                        {p.code}
-                                                                    </option>
-                                                                )
-                                                            )}
-                                                        </select>
-
-                                                        {/* Mostrar imagen del producto seleccionado */}
-                                                        {product.productId && (
-                                                            <div className="absolute right-6 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                                                                <ProductImage
-                                                                    imageId={
-                                                                        products?.find(
-                                                                            (
-                                                                                p
-                                                                            ) =>
-                                                                                p._id ===
-                                                                                product.productId
-                                                                        )
-                                                                            ?.imageId
-                                                                    }
-                                                                    className="w-8 h-8 rounded border border-gray-200"
-                                                                    alt={
-                                                                        products?.find(
-                                                                            (
-                                                                                p
-                                                                            ) =>
-                                                                                p._id ===
-                                                                                product.productId
-                                                                        )
-                                                                            ?.name ||
-                                                                        ""
-                                                                    }
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    <ProductSelector
+                                                        products={products}
+                                                        selectedProductId={product.productId}
+                                                        onSelect={(productId) =>
+                                                            updateProduct(
+                                                                productIndex,
+                                                                "productId",
+                                                                productId
+                                                            )
+                                                        }
+                                                        required
+                                                    />
                                                 </div>
 
                                                 <div>
@@ -1328,6 +1380,30 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                                 )}
                             </div>
                         )}
+
+                        {/* Botón Agregar Producto - Siempre visible debajo de la lista */}
+                        <div className="mt-4">
+                            <button
+                                type="button"
+                                onClick={addProduct}
+                                className="w-full px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center space-x-2"
+                            >
+                                <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 4v16m8-8H4"
+                                    />
+                                </svg>
+                                <span>Agregar Producto</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Mensaje de error general si hay productos sin stock */}
@@ -1394,6 +1470,17 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                                         )}
                                     </span>
                                 </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">
+                                        Adelanto pagado:
+                                    </span>
+                                    <span className="text-sm text-blue-600">
+                                        -
+                                        {formatCurrency(
+                                            formData.advancePayment
+                                        )}
+                                    </span>
+                                </div>
                                 <div className="border-t pt-2">
                                     <div className="flex justify-between items-center">
                                         <span className="text-xl font-semibold text-gray-900">
@@ -1406,6 +1493,23 @@ const SalesForm = ({ saleId, onSuccess, onCancel }: SalesFormProps) => {
                                         </span>
                                     </div>
                                 </div>
+                                {formData.advancePayment > 0 && (
+                                    <div className="border-t pt-2 mt-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-lg font-medium text-gray-700">
+                                                Total a cobrar:
+                                            </span>
+                                            <span className="text-xl font-bold text-blue-600">
+                                                {formatCurrency(
+                                                    formData.totalAmount - formData.advancePayment
+                                                )}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Monto que debe cobrar la empresa de delivery
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

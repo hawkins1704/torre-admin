@@ -92,6 +92,8 @@ export default defineSchema({
     customerName: v.string(), // Nombre del cliente
     customerNumber: v.string(), // Número del cliente
     customerAddress: v.string(), // Dirección del cliente
+    district: v.optional(v.string()), // Distrito del cliente
+    googleMapsUrl: v.optional(v.string()), // URL de Google Maps
     shippingCost: v.number(), // Costo de envío
     salesChannel: v.string(), // "SHOPIFY", "MARKETPLACE", "INSTAGRAM", "TIKTOK"
     products: v.array(v.object({
@@ -107,6 +109,8 @@ export default defineSchema({
     })),
     subtotalAmount: v.number(), // Subtotal sin descuento
     discountAmount: v.number(), // Descuento aplicado en soles
+    advancePayment: v.number(), // Adelanto pagado por el cliente
+    saleStatus: v.optional(v.union(v.literal("REGISTRADO"), v.literal("PREPARADO"), v.literal("COMPLETADO"))), // Estado de la venta
     totalAmount: v.number(), // Total final
     createdAt: v.number(),
     updatedAt: v.number(),

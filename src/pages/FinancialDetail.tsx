@@ -114,7 +114,8 @@ const FinancialDetail = () => {
           </button>
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">
             Editar Transacción
           </h2>
@@ -195,6 +196,7 @@ const FinancialDetail = () => {
               </button>
             </div>
           </form>
+          </div>
         </div>
       </div>
     );

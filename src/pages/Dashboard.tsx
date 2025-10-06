@@ -155,7 +155,6 @@ const Dashboard = () => {
               </p>
               <div className="text-xs text-gray-500 mt-1">
                 Productos: {formatCurrency(dashboardMetrics.productCosts)} | 
-                Envíos: {formatCurrency(dashboardMetrics.shippingCosts)} | 
                 Otros: {formatCurrency(dashboardMetrics.additionalExpenses)}
               </div>
             </div>

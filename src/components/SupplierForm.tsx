@@ -65,7 +65,7 @@ const SupplierForm = ({ supplierId, onSuccess, onCancel }: SupplierFormProps) =>
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-2xl font-semibold text-gray-900 mb-6">
           {supplierId ? 'Editar Proveedor' : 'Crear Proveedor'}

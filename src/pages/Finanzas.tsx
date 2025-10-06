@@ -57,16 +57,7 @@ const Finanzas = () => {
     setShowCreateForm(true);
   };
 
-  const handleEditTransaction = (transaction: { _id: Id<'financial_transactions'>; type: 'income' | 'expense'; description: string; amount: number; date: number }) => {
-    setFormData({
-      type: transaction.type,
-      description: transaction.description,
-      amount: transaction.amount,
-      date: new Date(transaction.date).toISOString().split('T')[0],
-    });
-    setEditingTransaction(transaction);
-    setShowCreateForm(true);
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,9 +144,10 @@ const Finanzas = () => {
           </button>
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">
-            {editingTransaction ? 'Editar Transacción' : 'Nueva Transacción'}
+            {editingTransaction ? 'Editar Transacción' : 'Crear Transacción'}
           </h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -234,6 +226,7 @@ const Finanzas = () => {
               </button>
             </div>
           </form>
+          </div>
         </div>
       </div>
     );
@@ -251,7 +244,7 @@ const Finanzas = () => {
             onClick={handleCreateTransaction}
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
-            Nueva Transacción
+            Crear Transacción
           </button>
         </div>
 
@@ -307,9 +300,6 @@ const Finanzas = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Fecha
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -347,28 +337,6 @@ const Finanzas = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(transaction.date)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewTransaction(transaction._id);
-                            }}
-                            className="text-emerald-500 hover:text-emerald-600 mr-3 transition-colors"
-                          >
-                            Ver
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditTransaction(transaction);
-                            }}
-                            className="text-slate-500 hover:text-slate-600 mr-3 transition-colors"
-                          >
-                            Editar
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))}

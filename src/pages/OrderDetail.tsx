@@ -3,18 +3,27 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+import OrderForm from '../components/OrderForm';
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const orderId = id as Id<'orders'>;
   const order = useQuery(api.orders.getById, { id: orderId });
   const removeOrder = useMutation(api.orders.remove);
 
   const handleEdit = () => {
-    // TODO: Implementar funcionalidad de edición
-    console.log('Editar orden:', orderId);
+    setShowEditForm(true);
+  };
+
+  const handleFormSuccess = () => {
+    setShowEditForm(false);
+  };
+
+  const handleFormCancel = () => {
+    setShowEditForm(false);
   };
 
   const handleDelete = () => {
@@ -34,6 +43,36 @@ const OrderDetail = () => {
   const cancelDelete = () => {
     setShowDeleteConfirm(false);
   };
+
+  if (showEditForm) {
+    return (
+      <div>
+        <div className="mb-8">
+          <button
+            onClick={handleFormCancel}
+            className="text-green-600 hover:text-green-700 font-medium mb-4"
+          >
+            ← Volver
+          </button>
+        </div>
+        <OrderForm 
+          orderId={orderId} 
+          onSuccess={handleFormSuccess} 
+          onCancel={handleFormCancel} 
+        />
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-500">
+          <p>Cargando orden...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleBack = () => {
     navigate('/ordenes');
@@ -67,8 +106,7 @@ const OrderDetail = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-4xl mx-auto">
+    <div>
         {/* Header */}
         <div className="mb-8">
           <button
@@ -100,9 +138,9 @@ const OrderDetail = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Información principal */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6">
             {/* Información básica */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Información de la Orden</h2>
@@ -211,7 +249,6 @@ const OrderDetail = () => {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Modal de confirmación de eliminación */}
       {showDeleteConfirm && (

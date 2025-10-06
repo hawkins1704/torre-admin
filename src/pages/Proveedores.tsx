@@ -102,9 +102,6 @@ const Proveedores = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Fecha de Creación
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -126,26 +123,6 @@ const Proveedores = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(supplier.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button 
-                          className="text-emerald-500 hover:text-emerald-600 mr-3 transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/proveedores/${supplier._id}`);
-                          }}
-                        >
-                          Ver
-                        </button>
-                        <button 
-                          className="text-slate-500 hover:text-slate-600 mr-3 transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/proveedores/${supplier._id}/editar`);
-                          }}
-                        >
-                          Editar
-                        </button>
                       </td>
                     </tr>
                   ))}

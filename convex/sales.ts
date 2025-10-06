@@ -176,7 +176,11 @@ export const create = mutation({
     })),
     subtotalAmount: v.number(),
     discountAmount: v.number(),
+    advancePayment: v.number(),
+    saleStatus: v.optional(v.union(v.literal("REGISTRADO"), v.literal("PREPARADO"), v.literal("COMPLETADO"))),
     totalAmount: v.number(),
+    district: v.optional(v.string()),
+    googleMapsUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -206,7 +210,11 @@ export const create = mutation({
       products: args.products,
       subtotalAmount: args.subtotalAmount,
       discountAmount: args.discountAmount,
+      advancePayment: args.advancePayment,
+      saleStatus: args.saleStatus || "REGISTRADO",
       totalAmount: args.totalAmount,
+      district: args.district,
+      googleMapsUrl: args.googleMapsUrl,
       createdAt: now,
       updatedAt: now,
     });
@@ -248,7 +256,11 @@ export const update = mutation({
     })),
     subtotalAmount: v.number(),
     discountAmount: v.number(),
+    advancePayment: v.number(),
+    saleStatus: v.optional(v.union(v.literal("REGISTRADO"), v.literal("PREPARADO"), v.literal("COMPLETADO"))),
     totalAmount: v.number(),
+    district: v.optional(v.string()),
+    googleMapsUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -309,7 +321,11 @@ export const update = mutation({
       products: args.products,
       subtotalAmount: args.subtotalAmount,
       discountAmount: args.discountAmount,
+      advancePayment: args.advancePayment,
+      saleStatus: args.saleStatus,
       totalAmount: args.totalAmount,
+      district: args.district,
+      googleMapsUrl: args.googleMapsUrl,
       updatedAt: now,
     });
   },
@@ -362,12 +378,10 @@ export const getSalesMetricsByMonth = query({
       .collect();
     
     const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-    const totalShippingCost = sales.reduce((sum, sale) => sum + sale.shippingCost, 0);
     const totalDiscounts = sales.reduce((sum, sale) => sum + sale.discountAmount, 0);
     
     return {
       totalSales,
-      totalShippingCost,
       totalDiscounts,
       salesCount: sales.length,
       averageSaleAmount: sales.length > 0 ? totalSales / sales.length : 0,
@@ -528,12 +542,10 @@ export const getDashboardMetrics = query({
       .collect();
     
     const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-    const totalShippingCost = sales.reduce((sum, sale) => sum + sale.shippingCost, 0);
     const totalDiscounts = sales.reduce((sum, sale) => sum + sale.discountAmount, 0);
     
     const salesMetrics = {
       totalSales,
-      totalShippingCost,
       totalDiscounts,
       salesCount: sales.length,
       averageSaleAmount: sales.length > 0 ? totalSales / sales.length : 0,
@@ -565,7 +577,7 @@ export const getDashboardMetrics = query({
     
     // Calcular totales
     const totalIncome = salesMetrics.totalSales + financialMetrics.totalIncome;
-    const totalExpenses = totalOrderCosts + salesMetrics.totalShippingCost + financialMetrics.totalExpenses;
+    const totalExpenses = totalOrderCosts + financialMetrics.totalExpenses;
     const netProfit = totalIncome - totalExpenses;
     
     const result: {
@@ -573,7 +585,6 @@ export const getDashboardMetrics = query({
       additionalIncome: number;
       totalIncome: number;
       productCosts: number;
-      shippingCosts: number;
       additionalExpenses: number;
       totalExpenses: number;
       netProfit: number;
@@ -592,7 +603,6 @@ export const getDashboardMetrics = query({
       
       // Gastos
       productCosts: totalOrderCosts,
-      shippingCosts: salesMetrics.totalShippingCost,
       additionalExpenses: financialMetrics.totalExpenses,
       totalExpenses,
       

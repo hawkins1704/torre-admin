@@ -3,18 +3,27 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+import SalesForm from '../components/SalesForm';
 
 const SalesDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const saleId = id as Id<'sales'>;
   const sale = useQuery(api.sales.getById, { id: saleId });
   const removeSale = useMutation(api.sales.remove);
 
   const handleEdit = () => {
-    // TODO: Implementar funcionalidad de edición
-    console.log('Editar venta:', saleId);
+    setShowEditForm(true);
+  };
+
+  const handleFormSuccess = () => {
+    setShowEditForm(false);
+  };
+
+  const handleFormCancel = () => {
+    setShowEditForm(false);
   };
 
   const handleDelete = () => {
@@ -39,6 +48,36 @@ const SalesDetail = () => {
     navigate('/ventas');
   };
 
+  if (showEditForm) {
+    return (
+      <div>
+        <div className="mb-8">
+          <button
+            onClick={handleFormCancel}
+            className="text-green-600 hover:text-green-700 font-medium mb-4"
+          >
+            ← Volver
+          </button>
+        </div>
+        <SalesForm 
+          saleId={saleId} 
+          onSuccess={handleFormSuccess} 
+          onCancel={handleFormCancel} 
+        />
+      </div>
+    );
+  }
+
+  if (!sale) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-500">
+          <p>Cargando venta...</p>
+        </div>
+      </div>
+    );
+  }
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-PE', {
       style: 'currency',
@@ -52,6 +91,19 @@ const SalesDetail = () => {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'REGISTRADO':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'PREPARADO':
+        return 'bg-blue-100 text-blue-800';
+      case 'COMPLETADO':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const getChannelColor = (channel: string) => {
@@ -80,8 +132,7 @@ const SalesDetail = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-4xl mx-auto">
+    <div>
         {/* Header */}
         <div className="mb-8">
           <button
@@ -135,6 +186,12 @@ const SalesDetail = () => {
                   </span>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Estado de Venta</label>
+                  <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(sale.saleStatus || 'REGISTRADO')}`}>
+                    {sale.saleStatus || 'REGISTRADO'}
+                  </span>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Costo de Envío</label>
                   <p className="text-lg font-medium text-gray-900">{formatCurrency(sale.shippingCost)}</p>
                 </div>
@@ -153,12 +210,29 @@ const SalesDetail = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
                   <p className="text-lg font-medium text-gray-900">{sale.customerNumber}</p>
                 </div>
-                {sale.customerAddress && (
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-                    <p className="text-lg font-medium text-gray-900">{sale.customerAddress}</p>
-                  </div>
-                )}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                  <p className="text-lg font-medium text-gray-900">{sale.customerAddress}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Distrito</label>
+                  <p className="text-lg font-medium text-gray-900">{sale.district || 'No especificado'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Google Maps</label>
+                  {sale.googleMapsUrl ? (
+                    <a 
+                      href={sale.googleMapsUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Ver ubicación
+                    </a>
+                  ) : (
+                    <p className="text-lg font-medium text-gray-700">No especificado</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -231,12 +305,29 @@ const SalesDetail = () => {
                     <span className="font-medium text-red-600">-{formatCurrency(sale.discountAmount)}</span>
                   </div>
                 )}
+                {sale.advancePayment > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Adelanto pagado:</span>
+                    <span className="font-medium text-blue-600">-{formatCurrency(sale.advancePayment)}</span>
+                  </div>
+                )}
                 <div className="border-t pt-3">
                   <div className="flex justify-between">
                     <span className="text-lg font-semibold text-gray-900">Total:</span>
                     <span className="text-xl font-bold text-green-600">{formatCurrency(sale.totalAmount)}</span>
                   </div>
                 </div>
+                {sale.advancePayment > 0 && (
+                  <div className="border-t pt-3 mt-3">
+                    <div className="flex justify-between">
+                      <span className="text-lg font-semibold text-gray-700">Total a cobrar:</span>
+                      <span className="text-xl font-bold text-blue-600">{formatCurrency(sale.totalAmount - sale.advancePayment)}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Monto que debe cobrar la empresa de delivery al cliente
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -296,7 +387,6 @@ const SalesDetail = () => {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 };
