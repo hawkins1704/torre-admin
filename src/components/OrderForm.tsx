@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+import ProductSelector from './ProductSelector';
 
 interface OrderFormProps {
   orderId?: Id<'orders'>;
@@ -336,19 +337,14 @@ const OrderForm = ({ orderId, onSuccess, onCancel }: OrderFormProps) => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Producto *
                         </label>
-                        <select
-                          value={product.productId}
-                          onChange={(e) => updateProduct(productIndex, 'productId', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        <ProductSelector
+                          products={products}
+                          selectedProductId={product.productId}
+                          onSelect={(productId) =>
+                            updateProduct(productIndex, 'productId', productId)
+                          }
                           required
-                        >
-                          <option value="">Seleccionar producto</option>
-                          {products?.map((p) => (
-                            <option key={p._id} value={p._id}>
-                              {p.name} - {p.code}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
 
                       <div>
