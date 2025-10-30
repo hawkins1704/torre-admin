@@ -125,9 +125,10 @@ export const create = mutation({
     categoryId: v.id("categories"),
     cost: v.number(),
     packaging: v.number(),
+    advertisingPercentage: v.number(),
     profitPercentage: v.number(),
     gatewayCommission: v.number(),
-    igv: v.number(),
+    igvPercentage: v.number(),
     imageId: v.optional(v.id("_storage")),
     variations: v.optional(v.array(v.object({
       name: v.string(),
@@ -140,17 +141,20 @@ export const create = mutation({
     const now = Date.now();
     
     // Cálculos automáticos
-    const totalCost = args.cost + args.packaging;
+    const baseCost = args.cost + args.packaging;
+    const advertisingAmount = baseCost * (args.advertisingPercentage / 100);
+    const totalCost = baseCost + advertisingAmount;
     const profitAmount = totalCost * (args.profitPercentage / 100);
     const desiredNetIncome = totalCost + profitAmount;
     
     // Precio con pasarela
     const priceWithoutIgv = desiredNetIncome / (1 - args.gatewayCommission / 100);
-    const priceWithIgv = priceWithoutIgv + args.igv;
+    const igvAmount = priceWithoutIgv * (args.igvPercentage / 100);
+    const priceWithIgv = priceWithoutIgv + igvAmount;
     const finalPrice = Math.ceil(priceWithIgv);
     
     // Precio sin pasarela (comisión = 0%)
-    const priceWithoutGateway = desiredNetIncome + args.igv;
+    const priceWithoutGateway = desiredNetIncome + igvAmount;
     const finalPriceWithoutGateway = Math.ceil(priceWithoutGateway);
     
     // Manejo del stock
@@ -170,9 +174,10 @@ export const create = mutation({
       categoryId: args.categoryId,
       cost: args.cost,
       packaging: args.packaging,
+      advertisingPercentage: args.advertisingPercentage,
       profitPercentage: args.profitPercentage,
       gatewayCommission: args.gatewayCommission,
-      igv: args.igv,
+      igvPercentage: args.igvPercentage,
       imageId: args.imageId,
       variations: args.variations,
       stock,
@@ -180,6 +185,7 @@ export const create = mutation({
       
       // Campos calculados
       totalCost,
+      advertisingAmount,
       profitAmount,
       desiredNetIncome,
       priceWithoutIgv,
@@ -205,9 +211,10 @@ export const update = mutation({
     categoryId: v.id("categories"),
     cost: v.number(),
     packaging: v.number(),
+    advertisingPercentage: v.number(),
     profitPercentage: v.number(),
     gatewayCommission: v.number(),
-    igv: v.number(),
+    igvPercentage: v.number(),
     imageId: v.optional(v.id("_storage")),
     variations: v.optional(v.array(v.object({
       name: v.string(),
@@ -220,17 +227,20 @@ export const update = mutation({
     const now = Date.now();
     
     // Recalcular todos los campos
-    const totalCost = args.cost + args.packaging;
+    const baseCost = args.cost + args.packaging;
+    const advertisingAmount = baseCost * (args.advertisingPercentage / 100);
+    const totalCost = baseCost + advertisingAmount;
     const profitAmount = totalCost * (args.profitPercentage / 100);
     const desiredNetIncome = totalCost + profitAmount;
     
     // Precio con pasarela
     const priceWithoutIgv = desiredNetIncome / (1 - args.gatewayCommission / 100);
-    const priceWithIgv = priceWithoutIgv + args.igv;
+    const igvAmount = priceWithoutIgv * (args.igvPercentage / 100);
+    const priceWithIgv = priceWithoutIgv + igvAmount;
     const finalPrice = Math.ceil(priceWithIgv);
     
     // Precio sin pasarela
-    const priceWithoutGateway = desiredNetIncome + args.igv;
+    const priceWithoutGateway = desiredNetIncome + igvAmount;
     const finalPriceWithoutGateway = Math.ceil(priceWithoutGateway);
     
     // Manejo del stock
@@ -250,9 +260,10 @@ export const update = mutation({
       categoryId: args.categoryId,
       cost: args.cost,
       packaging: args.packaging,
+      advertisingPercentage: args.advertisingPercentage,
       profitPercentage: args.profitPercentage,
       gatewayCommission: args.gatewayCommission,
-      igv: args.igv,
+      igvPercentage: args.igvPercentage,
       imageId: args.imageId,
       variations: args.variations,
       stock,
@@ -260,6 +271,7 @@ export const update = mutation({
       
       // Campos calculados
       totalCost,
+      advertisingAmount,
       profitAmount,
       desiredNetIncome,
       priceWithoutIgv,

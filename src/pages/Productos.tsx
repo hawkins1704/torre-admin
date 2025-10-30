@@ -1,5 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+
+const numericFields = new Set([
+  'totalCost',
+  'profitPercentage',
+  'finalPrice',
+  'finalPriceWithoutGateway',
+  'stock',
+]);
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -15,6 +23,8 @@ const Productos = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showWholesaleModal, setShowWholesaleModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [sortField, setSortField] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const categories = useQuery(api.categories.getAll, {});
   const products = useQuery(api.products.search, {
@@ -22,6 +32,60 @@ const Productos = () => {
     categoryId: selectedCategory ? (selectedCategory as Id<'categories'>) : undefined,
     limit: 100,
   });
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    // First click default: numeric -> desc, text -> asc
+    const isNumeric = numericFields.has(field);
+    setSortField(field);
+    setSortOrder(isNumeric ? 'desc' : 'asc');
+  };
+
+  const sortedProducts = useMemo(() => {
+    if (!products) return [] as any[];
+    if (!sortField) return products;
+
+    const getValue = (p: any) => {
+      switch (sortField) {
+        case 'name':
+          return p.name ?? '';
+        case 'category':
+          return p.category?.name ?? '';
+        case 'totalCost':
+          return Number(p.totalCost ?? 0);
+        case 'profitPercentage':
+          return Number(p.profitPercentage ?? 0);
+        case 'finalPrice':
+          return Number(p.finalPrice ?? 0);
+        case 'finalPriceWithoutGateway':
+          return Number(p.finalPriceWithoutGateway ?? 0);
+        case 'stock':
+          return Number(p.stock ?? 0);
+        default:
+          return p[sortField];
+      }
+    };
+
+    const copy = [...products];
+    copy.sort((a: any, b: any) => {
+      const va = getValue(a);
+      const vb = getValue(b);
+
+      if (numericFields.has(sortField)) {
+        const diff = (va as number) - (vb as number);
+        return sortOrder === 'asc' ? diff : -diff;
+      }
+
+      const sa = String(va).toLocaleLowerCase();
+      const sb = String(vb).toLocaleLowerCase();
+      const cmp = sa.localeCompare(sb);
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+    return copy;
+  }, [products, sortField, sortOrder]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-PE', {
@@ -112,7 +176,7 @@ const Productos = () => {
 
         {/* Lista de productos */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {products && products.length > 0 ? (
+          {sortedProducts && sortedProducts.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -120,26 +184,47 @@ const Productos = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Imagen
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Producto
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                      onClick={() => handleSort('name')}
+                    >
+                      Producto{sortField === 'name' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Categoría
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                      onClick={() => handleSort('category')}
+                    >
+                      Categoría{sortField === 'category' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Costo Total
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                      onClick={() => handleSort('totalCost')}
+                    >
+                      Costo Total{sortField === 'totalCost' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ganancia %
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                      onClick={() => handleSort('profitPercentage')}
+                    >
+                      Ganancia %{sortField === 'profitPercentage' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Precio Final
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                      onClick={() => handleSort('finalPrice')}
+                    >
+                      Precio Final{sortField === 'finalPrice' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Final Sin Pasarela
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                      onClick={() => handleSort('finalPriceWithoutGateway')}
+                    >
+                      Final Sin Pasarela{sortField === 'finalPriceWithoutGateway' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stock
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                      onClick={() => handleSort('stock')}
+                    >
+                      Stock{sortField === 'stock' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Acciones
@@ -147,7 +232,7 @@ const Productos = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {products.map((product) => (
+                  {sortedProducts.map((product) => (
                     <tr 
                       key={product._id} 
                       className="hover:bg-gray-50 cursor-pointer"

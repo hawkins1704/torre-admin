@@ -23,9 +23,10 @@ interface ProductFormData {
   categoryId: string;
   cost: number;
   packaging: number;
+  advertisingPercentage: number;
   profitPercentage: number;
   gatewayCommission: number;
-  igv: number;
+  igvPercentage: number;
   imageId?: Id<'_storage'>;
   variations: ProductVariation[];
   stock: number;
@@ -41,9 +42,10 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
     categoryId: '',
     cost: 0,
     packaging: 2.40,
+    advertisingPercentage: 0,
     profitPercentage: 0,
     gatewayCommission: 7.50,
-    igv: 0,
+    igvPercentage: 18,
     variations: [],
     stock: 0,
     stockByVariation: {},
@@ -53,6 +55,7 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
 
   const [calculations, setCalculations] = useState({
     totalCost: 0,
+    advertisingAmount: 0,
     profitAmount: 0,
     desiredNetIncome: 0,
     priceWithoutIgv: 0,
@@ -77,9 +80,10 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
         categoryId: product.categoryId,
         cost: product.cost,
         packaging: product.packaging,
+        advertisingPercentage: product.advertisingPercentage || 0,
         profitPercentage: product.profitPercentage,
         gatewayCommission: product.gatewayCommission,
-        igv: product.igv,
+        igvPercentage: product.igvPercentage ?? 0,
         imageId: product.imageId,
         variations: product.variations || [],
         stock: product.stock || 0,
@@ -90,22 +94,26 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
 
   // Calcular valores automáticamente
   useEffect(() => {
-    const { cost, packaging, profitPercentage, gatewayCommission, igv } = formData;
+    const { cost, packaging, advertisingPercentage, profitPercentage, gatewayCommission, igvPercentage } = formData;
     
-    const totalCost = cost + packaging;
+    const baseCost = cost + packaging;
+    const advertisingAmount = baseCost * (advertisingPercentage / 100);
+    const totalCost = baseCost + advertisingAmount;
     const profitAmount = totalCost * (profitPercentage / 100);
     const desiredNetIncome = totalCost + profitAmount;
     
     // Precio con pasarela
     const priceWithoutIgv = gatewayCommission > 0 ? desiredNetIncome / (1 - gatewayCommission / 100) : desiredNetIncome;
-    const priceWithIgv = priceWithoutIgv + igv;
+    const igvAmount = priceWithoutIgv * (igvPercentage / 100);
+    const priceWithIgv = priceWithoutIgv + igvAmount;
     const finalPrice = Math.ceil(priceWithIgv);
     
     // Precio sin pasarela
-    const priceWithoutGateway = desiredNetIncome + igv;
+    const priceWithoutGateway = desiredNetIncome + igvAmount;
     
     setCalculations({
       totalCost,
+      advertisingAmount,
       profitAmount,
       desiredNetIncome,
       priceWithoutIgv,
@@ -520,6 +528,36 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
                 />
               </div>
 
+              <div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Publicidad (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.advertisingPercentage}
+                      onChange={(e) => handleNumericInputChange('advertisingPercentage', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Publicidad (S/)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={Number.isFinite(calculations.advertisingAmount) ? Number(calculations.advertisingAmount.toFixed(2)) : 0}
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -559,14 +597,14 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  IGV *
+                  IGV (%) *
                 </label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.igv}
-                  onChange={(e) => handleNumericInputChange('igv', e.target.value)}
+                  value={formData.igvPercentage}
+                  onChange={(e) => handleNumericInputChange('igvPercentage', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   required
                 />
@@ -584,6 +622,7 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
                     <span className="text-sm text-gray-600">Costo Total:</span>
                     <span className="font-medium">{formatCurrency(calculations.totalCost)}</span>
                   </div>
+                  
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Ganancia en soles:</span>
                     <span className="font-medium">{formatCurrency(calculations.profitAmount)}</span>

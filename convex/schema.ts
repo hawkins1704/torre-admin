@@ -24,11 +24,11 @@ export default defineSchema({
     categoryId: v.id("categories"),
     cost: v.number(),
     packaging: v.number(),
+    advertisingPercentage: v.number(),
     profitPercentage: v.number(),
     gatewayCommission: v.number(),
-    igv: v.number(),
+    igvPercentage: v.optional(v.number()),
     imageId: v.optional(v.id("_storage")),
-    
     // Variaciones del producto
     variations: v.optional(v.array(v.object({
       name: v.string(), // Ej: "Color", "Talla", "Material"
@@ -41,6 +41,7 @@ export default defineSchema({
     
     // Campos calculados
     totalCost: v.number(),
+    advertisingAmount: v.number(),
     profitAmount: v.number(),
     desiredNetIncome: v.number(),
     priceWithoutIgv: v.number(),
