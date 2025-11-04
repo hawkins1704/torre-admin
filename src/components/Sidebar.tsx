@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuthActions } from '@convex-dev/auth/react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -9,7 +10,8 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) => {
   const location = useLocation();
-
+  const navigate = useNavigate();
+const { signOut } = useAuthActions();
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/productos', label: 'Productos', icon: '📦' },
@@ -62,6 +64,18 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps)
                   </li>
                 );
               })}
+              <li>
+                <button
+                  onClick={() => {
+                    void signOut();
+                    navigate('/login');
+                  }}
+                  className="font-medium text-red-700 hover:bg-gray-50 hover:text-red-800 w-full flex items-center px-3 py-2 rounded-lg"
+                >
+                  
+                  <span className="ml-2 text-sm">Cerrar sesión</span>
+                </button>
+              </li>
             </ul>
           </nav>
         </div>
