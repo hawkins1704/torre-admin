@@ -3,6 +3,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import ProductSelector from './ProductSelector';
+import { useCurrentStore } from '../hooks/useCurrentStore';
 
 interface OrderFormProps {
   orderId?: Id<'orders'>;
@@ -40,9 +41,16 @@ const OrderForm = ({ orderId, onSuccess, onCancel }: OrderFormProps) => {
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  const productsData = useQuery(api.products.getAll, {});
+  const currentStoreId = useCurrentStore();
+
+  const productsData = useQuery(api.products.getAll, {
+    storeId: currentStoreId || undefined,
+  });
   const products = productsData?.products;
-  const suppliers = useQuery(api.suppliers.getAll, { limit: 100 });
+  const suppliers = useQuery(api.suppliers.getAll, { 
+    limit: 100,
+    storeId: currentStoreId || undefined,
+  });
   const order = useQuery(api.orders.getById, orderId ? { id: orderId } : 'skip');
   const createOrder = useMutation(api.orders.create);
   const updateOrder = useMutation(api.orders.update);
@@ -226,6 +234,7 @@ const OrderForm = ({ orderId, onSuccess, onCancel }: OrderFormProps) => {
         supplier: formData.supplier,
         products: formData.products,
         totalAmount: formData.totalAmount,
+        storeId: currentStoreId || undefined,
       };
 
       if (orderId) {

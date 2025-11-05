@@ -16,12 +16,22 @@ export const getAll = query({
       cursor: v.optional(v.string()),
       numItems: v.optional(v.number()),
     })),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const paginationOpts = args.paginationOpts || { numItems: 50 };
     
+    // Si NO se proporciona storeId, retornar vacío
+    if (!args.storeId) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: null,
+      };
+    }
+    
     return await ctx.db.query("financial_transactions")
-      .withIndex("by_created_at")
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .order("desc")
       .paginate(paginationOpts as PaginationOptions);
   },
@@ -41,15 +51,23 @@ export const search = query({
     searchTerm: v.optional(v.string()),
     type: v.optional(v.union(v.literal("income"), v.literal("expense"))),
     limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
+    
+    // Si NO se proporciona storeId, retornar array vacío
+    if (!args.storeId) {
+      return [];
+    }
     
     let transactions;
     
     if (args.searchTerm && args.searchTerm.trim()) {
       const searchTerm = args.searchTerm.trim().toLowerCase();
-      const allTransactions = await ctx.db.query("financial_transactions").collect();
+      const allTransactions = await ctx.db.query("financial_transactions")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+        .collect();
       
       transactions = allTransactions
         .filter(transaction => 
@@ -60,7 +78,7 @@ export const search = query({
     } else {
       transactions = await ctx.db
         .query("financial_transactions")
-        .withIndex("by_created_at")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
         .order("desc")
         .take(limit);
     }
@@ -79,21 +97,33 @@ export const getMetricsByMonth = query({
   args: {
     month: v.number(), // 1-12
     year: v.number(),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
+    // Si NO se proporciona storeId, retornar métricas vacías
+    if (!args.storeId) {
+      return {
+        totalIncome: 0,
+        totalExpenses: 0,
+        netIncome: 0,
+        incomeCount: 0,
+        expenseCount: 0,
+        transactions: [],
+      };
+    }
+    
     const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
     const endOfMonth = new Date(args.year, args.month, 0, 23, 59, 59, 999).getTime();
     
-    const transactions = await ctx.db
+    const allTransactions = await ctx.db
       .query("financial_transactions")
-      .withIndex("by_date")
-      .filter(q => 
-        q.and(
-          q.gte(q.field("date"), startOfMonth),
-          q.lte(q.field("date"), endOfMonth)
-        )
-      )
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
+    
+    // Filtrar por fecha
+    const transactions = allTransactions.filter(t => 
+      t.date >= startOfMonth && t.date <= endOfMonth
+    );
     
     const incomeTransactions = transactions.filter(t => t.type === "income");
     const expenseTransactions = transactions.filter(t => t.type === "expense");
@@ -119,6 +149,7 @@ export const create = mutation({
     description: v.string(),
     amount: v.number(),
     date: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -132,6 +163,7 @@ export const create = mutation({
       type: args.type,
       description: args.description,
       amount: args.amount,
+      storeId: args.storeId,
       createdAt: now,
       updatedAt: now,
     });
@@ -184,8 +216,15 @@ export const remove = mutation({
 
 // Obtener resumen de ingresos y gastos por mes (últimos 12 meses)
 export const getMonthlySummary = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    storeId: v.optional(v.id("stores")),
+  },
+  handler: async (ctx, args) => {
+    // Si NO se proporciona storeId, retornar array vacío
+    if (!args.storeId) {
+      return [];
+    }
+    
     const now = new Date();
     const summaries: Array<{
       month: number;
@@ -208,6 +247,12 @@ export const getMonthlySummary = query({
       }>;
     }> = [];
     
+    // Obtener todas las transacciones de la tienda una vez
+    const allTransactions = await ctx.db
+      .query("financial_transactions")
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+      .collect();
+    
     for (let i = 0; i < 12; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const month = date.getMonth() + 1;
@@ -216,16 +261,10 @@ export const getMonthlySummary = query({
       const startOfMonth = new Date(year, month - 1, 1).getTime();
       const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999).getTime();
       
-      const transactions = await ctx.db
-        .query("financial_transactions")
-        .withIndex("by_date")
-        .filter(q => 
-          q.and(
-            q.gte(q.field("date"), startOfMonth),
-            q.lte(q.field("date"), endOfMonth)
-          )
-        )
-        .collect();
+      // Filtrar por fecha
+      const transactions = allTransactions.filter(t => 
+        t.date >= startOfMonth && t.date <= endOfMonth
+      );
       
       const incomeTransactions = transactions.filter(t => t.type === "income");
       const expenseTransactions = transactions.filter(t => t.type === "expense");

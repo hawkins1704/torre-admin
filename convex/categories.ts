@@ -3,14 +3,24 @@ import { v } from "convex/values";
 
 // Obtener todas las categorías ordenadas por fecha de creación (con límite)
 export const getAll = query({
-  args: { limit: v.optional(v.number()) },
+  args: { 
+    limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
+  },
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
     
-    return await ctx.db.query("categories")
-      .withIndex("by_created_at")
-      .order("desc")
-      .take(limit);
+    // Si se proporciona storeId, solo traer categorías de esa tienda
+    if (args.storeId) {
+      return await ctx.db.query("categories")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+        .order("desc")
+        .take(limit);
+    }
+    
+    // Si NO se proporciona storeId, retornar array vacío
+    // (para que solo se vean datos cuando hay una tienda seleccionada)
+    return [];
   },
 });
 
@@ -27,12 +37,14 @@ export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     return await ctx.db.insert("categories", {
       name: args.name,
       description: args.description,
+      storeId: args.storeId,
       createdAt: now,
     });
   },

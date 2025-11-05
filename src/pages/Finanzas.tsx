@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+import { useCurrentStore } from '../hooks/useCurrentStore';
 
 const Finanzas = () => {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ const Finanzas = () => {
   const [editingTransaction, setEditingTransaction] = useState<{ _id: Id<'financial_transactions'>; type: 'income' | 'expense'; description: string; amount: number; date: number } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<{ _id: Id<'financial_transactions'>; description: string } | null>(null);
+
+  const currentStoreId = useCurrentStore();
 
   // Estados del formulario
   const [formData, setFormData] = useState({
@@ -25,6 +28,7 @@ const Finanzas = () => {
     searchTerm: searchTerm.trim() || undefined,
     type: selectedType || undefined,
     limit: 100,
+    storeId: currentStoreId || undefined,
   });
 
   const createTransaction = useMutation(api.financial_transactions.create);
@@ -79,6 +83,7 @@ const Finanzas = () => {
           description: formData.description,
           amount: formData.amount,
           date: transactionDate,
+          storeId: currentStoreId || undefined,
         });
       }
       

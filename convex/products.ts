@@ -47,33 +47,44 @@ export const getAll = query({
       cursor: v.optional(v.string()),
       numItems: v.optional(v.number()),
     })),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const paginationOpts = args.paginationOpts || { numItems: 50 };
     
-    const productsPage = await ctx.db.query("products")
-      .withIndex("by_created_at")
-      .order("desc")
-      .paginate(paginationOpts as PaginationOptions);
+    // Si se proporciona storeId, solo traer productos de esa tienda
+    if (args.storeId) {
+      const productsPage = await ctx.db.query("products")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+        .order("desc")
+        .paginate(paginationOpts as PaginationOptions);
+      
+      // Obtener información de categorías usando batch get (más eficiente)
+      const categoryIds = [...new Set(productsPage.page.map(p => p.categoryId))];
+      const categories = await Promise.all(
+        categoryIds.map(id => ctx.db.get(id as Id<"categories">))
+      );
+      const categoryMap = new Map(
+        categories.filter(Boolean).map(cat => [cat!._id, cat])
+      );
+      
+      const productsWithCategories = productsPage.page.map(product => ({
+        ...product,
+        category: categoryMap.get(product.categoryId),
+      }));
+      
+      return {
+        products: productsWithCategories,
+        isDone: productsPage.isDone,
+        continueCursor: productsPage.continueCursor,
+      };
+    }
     
-    // Obtener información de categorías usando batch get (más eficiente)
-    const categoryIds = [...new Set(productsPage.page.map(p => p.categoryId))];
-    const categories = await Promise.all(
-      categoryIds.map(id => ctx.db.get(id as Id<"categories">))
-    );
-    const categoryMap = new Map(
-      categories.filter(Boolean).map(cat => [cat!._id, cat])
-    );
-    
-    const productsWithCategories = productsPage.page.map(product => ({
-      ...product,
-      category: categoryMap.get(product.categoryId),
-    }));
-    
+    // Si NO se proporciona storeId, retornar vacío
     return {
-      products: productsWithCategories,
-      isDone: productsPage.isDone,
-      continueCursor: productsPage.continueCursor,
+      products: [],
+      isDone: true,
+      continueCursor: null,
     };
   },
 });
@@ -83,17 +94,24 @@ export const getByCategory = query({
   args: { 
     categoryId: v.id("categories"),
     limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 100;
     
-    const products = await ctx.db.query("products")
-      .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
-      .take(limit);
+    const productsQuery = ctx.db.query("products")
+      .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId));
+    
+    const products = await productsQuery.take(limit);
+    
+    // Filtrar por storeId si se proporciona
+    const filteredProducts = args.storeId 
+      ? products.filter(p => p.storeId === args.storeId)
+      : products;
     
     const category = await ctx.db.get(args.categoryId);
     
-    return products.map(product => ({
+    return filteredProducts.map(product => ({
       ...product,
       category: category,
     }));
@@ -136,6 +154,7 @@ export const create = mutation({
     }))),
     stock: v.optional(v.number()),
     stockByVariation: v.optional(v.any()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -182,6 +201,7 @@ export const create = mutation({
       variations: args.variations,
       stock,
       stockByVariation,
+      storeId: args.storeId,
       
       // Campos calculados
       totalCost,
@@ -299,9 +319,15 @@ export const search = query({
     searchTerm: v.optional(v.string()),
     categoryId: v.optional(v.id("categories")),
     limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
+    
+    // Si NO se proporciona storeId, retornar vacío
+    if (!args.storeId) {
+      return [];
+    }
     
     // Si hay término de búsqueda, usar ambos searchIndex
     if (args.searchTerm && args.searchTerm.trim()) {
@@ -339,9 +365,14 @@ export const search = query({
       
       // Combinar resultados y eliminar duplicados
       const allResults = [...resultsByName, ...resultsByCode];
-      const uniqueResults = allResults.filter((product, index, self) => 
+      let uniqueResults = allResults.filter((product, index, self) => 
         index === self.findIndex(p => p._id === product._id)
       );
+      
+      // Filtrar por storeId si se proporciona
+      if (args.storeId) {
+        uniqueResults = uniqueResults.filter(p => p.storeId === args.storeId);
+      }
       
       // Obtener información de categorías
       const categoryIds = [...new Set(uniqueResults.map(p => p.categoryId))];
@@ -361,14 +392,18 @@ export const search = query({
     // Si no hay término de búsqueda, usar filtros normales
     let products;
     if (args.categoryId) {
-      products = await ctx.db
+      // Filtrar por storeId y categoryId
+      const allProducts = await ctx.db
         .query("products")
-        .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId!))
-        .take(limit);
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+        .collect();
+      products = allProducts
+        .filter(p => p.categoryId === args.categoryId)
+        .slice(0, limit);
     } else {
       products = await ctx.db
         .query("products")
-        .withIndex("by_created_at")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
         .order("desc")
         .take(limit);
     }
@@ -606,9 +641,26 @@ export const validateStockForSale = query({
 
 // Obtener estado del inventario
 export const getInventoryStatus = query({
-  args: {},
-  handler: async (ctx) => {
-    const products = await ctx.db.query("products").collect();
+  args: {
+    storeId: v.optional(v.id("stores")),
+  },
+  handler: async (ctx, args) => {
+    // Si NO se proporciona storeId, retornar estado vacío
+    if (!args.storeId) {
+      return {
+        totalProducts: 0,
+        totalInventoryValue: 0,
+        lowStockProducts: [],
+        outOfStockProducts: [],
+        lowStockCount: 0,
+        outOfStockCount: 0,
+      };
+    }
+    
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+      .collect();
     
     const lowStockProducts = products.filter(p => p.stock > 0 && p.stock < 10);
     const outOfStockProducts = products.filter(p => p.stock === 0);

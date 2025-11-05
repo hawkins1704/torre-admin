@@ -4,19 +4,34 @@ import { v } from "convex/values";
 
 export default defineSchema({
   ...authTables,
+  stores: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    ownerId: v.id("users"), // ID del usuario que creó la tienda
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_created_at", ["createdAt"]),
+
   categories: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
+    storeId: v.optional(v.id("stores")),
     createdAt: v.number(),
-  }).index("by_created_at", ["createdAt"]),
+  })
+    .index("by_created_at", ["createdAt"])
+    .index("by_store", ["storeId"]),
 
   suppliers: defineTable({
     name: v.string(),
     number: v.string(),
+    storeId: v.optional(v.id("stores")),
     createdAt: v.number(),
   })
     .index("by_created_at", ["createdAt"])
-    .index("by_number", ["number"]),
+    .index("by_number", ["number"])
+    .index("by_store", ["storeId"]),
 
   products: defineTable({
     // Campos de entrada
@@ -52,12 +67,14 @@ export default defineSchema({
     priceWithoutGateway: v.number(), // Precio sin pasarela
     finalPriceWithoutGateway: v.number(), // Precio final sin pasarela (redondeado)
     
+    storeId: v.optional(v.id("stores")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_category", ["categoryId"])
     .index("by_created_at", ["createdAt"])
     .index("by_code", ["code"])
+    .index("by_store", ["storeId"])
     .searchIndex("search_products", {
       searchField: "name",
       filterFields: ["categoryId"]
@@ -83,11 +100,13 @@ export default defineSchema({
       }))),
     })),
     totalAmount: v.number(),
+    storeId: v.optional(v.id("stores")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_created_at", ["createdAt"])
-    .index("by_order_number", ["orderNumber"]),
+    .index("by_order_number", ["orderNumber"])
+    .index("by_store", ["storeId"]),
 
   sales: defineTable({
     saleNumber: v.string(),
@@ -115,12 +134,14 @@ export default defineSchema({
     advancePayment: v.number(), // Adelanto pagado por el cliente
     saleStatus: v.optional(v.union(v.literal("REGISTRADO"), v.literal("PREPARADO"), v.literal("COMPLETADO"))), // Estado de la venta
     totalAmount: v.number(), // Total final
+    storeId: v.optional(v.id("stores")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_created_at", ["createdAt"])
     .index("by_sale_number", ["saleNumber"])
-    .index("by_sales_channel", ["salesChannel"]),
+    .index("by_sales_channel", ["salesChannel"])
+    .index("by_store", ["storeId"]),
 
   financial_transactions: defineTable({
     transactionNumber: v.string(),
@@ -128,11 +149,13 @@ export default defineSchema({
     type: v.union(v.literal("income"), v.literal("expense")),
     description: v.string(),
     amount: v.number(),
+    storeId: v.optional(v.id("stores")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_created_at", ["createdAt"])
     .index("by_date", ["date"])
     .index("by_type", ["type"])
-    .index("by_transaction_number", ["transactionNumber"]),
+    .index("by_transaction_number", ["transactionNumber"])
+    .index("by_store", ["storeId"]),
 });

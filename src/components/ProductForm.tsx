@@ -4,6 +4,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import ImageUpload from './ImageUpload';
+import { useCurrentStore } from '../hooks/useCurrentStore';
 
 interface ProductFormProps {
   productId?: Id<'products'>;
@@ -64,7 +65,11 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
     priceWithoutGateway: 0,
   });
 
-  const categories = useQuery(api.categories.getAll, {});
+  const currentStoreId = useCurrentStore();
+
+  const categories = useQuery(api.categories.getAll, {
+    storeId: currentStoreId || undefined,
+  });
   const product = useQuery(api.products.getById, productId ? { id: productId } : 'skip');
   const createProduct = useMutation(api.products.create);
   const updateProduct = useMutation(api.products.update);
@@ -289,6 +294,7 @@ const ProductForm = ({ productId, onSuccess, onCancel }: ProductFormProps) => {
         ...formData,
         categoryId: formData.categoryId as Id<'categories'>,
         imageId: imageId,
+        storeId: currentStoreId || undefined,
       };
 
       if (productId) {

@@ -8,6 +8,8 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Productos from "./pages/Productos";
 import ProductDetail from "./pages/ProductDetail";
+import Stores from "./pages/Stores";
+import StoreDetail from "./pages/StoreDetail";
 import Categorias from "./pages/Categorias";
 import CategoryDetail from "./pages/CategoryDetail";
 import Proveedores from "./pages/Proveedores";
@@ -47,6 +49,8 @@ function App() {
                                 element={<Navigate to="/dashboard" replace />}
                             />
                             <Route path="dashboard" element={<Dashboard />} />
+                            <Route path="tiendas" element={<Stores />} />
+                            <Route path="tiendas/:id" element={<StoreDetail />} />
                             <Route path="productos" element={<Productos />} />
                             <Route
                                 path="productos/:id"

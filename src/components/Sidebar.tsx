@@ -14,6 +14,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps)
 const { signOut } = useAuthActions();
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
+    { path: '/tiendas', label: 'Tiendas', icon: '🏪' },
     { path: '/productos', label: 'Productos', icon: '📦' },
     { path: '/categorias', label: 'Categorías', icon: '🏷️' },
     { path: '/proveedores', label: 'Proveedores', icon: '🏢' },

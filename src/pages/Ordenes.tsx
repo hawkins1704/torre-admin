@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import OrderForm from "../components/OrderForm";
+import { useCurrentStore } from "../hooks/useCurrentStore";
 
 const Ordenes = () => {
     const navigate = useNavigate();
@@ -13,9 +14,12 @@ const Ordenes = () => {
     >(undefined);
     const [searchTerm, setSearchTerm] = useState("");
 
+    const currentStoreId = useCurrentStore();
+
     const ordersData = useQuery(api.orders.search, {
         searchTerm: searchTerm.trim() || undefined,
         limit: 50,
+        storeId: currentStoreId || undefined,
     });
 
     const orders = ordersData;

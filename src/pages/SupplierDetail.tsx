@@ -4,6 +4,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import SupplierForm from '../components/SupplierForm';
+import { useCurrentStore } from '../hooks/useCurrentStore';
 
 const SupplierDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,9 +12,14 @@ const SupplierDetail = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const currentStoreId = useCurrentStore();
+
   const supplierId = id as Id<'suppliers'>;
   const supplier = useQuery(api.suppliers.getById, { id: supplierId });
-  const orders = useQuery(api.orders.getAll, { paginationOpts: { numItems: 100 } });
+  const orders = useQuery(api.orders.getAll, { 
+    paginationOpts: { numItems: 100 },
+    storeId: currentStoreId || undefined,
+  });
   const deleteSupplier = useMutation(api.suppliers.remove);
 
   const formatDate = (timestamp: number) => {

@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import SalesForm from "../components/SalesForm";
+import { useCurrentStore } from "../hooks/useCurrentStore";
 
 const Ventas = () => {
     const navigate = useNavigate();
@@ -13,9 +14,12 @@ const Ventas = () => {
     );
     const [searchTerm, setSearchTerm] = useState("");
 
+    const currentStoreId = useCurrentStore();
+
     const salesData = useQuery(api.sales.search, {
         searchTerm: searchTerm.trim() || undefined,
         limit: 50,
+        storeId: currentStoreId || undefined,
     });
 
     const sales = salesData;

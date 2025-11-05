@@ -4,6 +4,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import CategoryForm from '../components/CategoryForm';
+import { useCurrentStore } from '../hooks/useCurrentStore';
 
 const CategoryDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,9 +12,14 @@ const CategoryDetail = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const currentStoreId = useCurrentStore();
+
   const categoryId = id as Id<'categories'>;
   const category = useQuery(api.categories.getById, { id: categoryId });
-  const products = useQuery(api.products.getByCategory, { categoryId });
+  const products = useQuery(api.products.getByCategory, { 
+    categoryId,
+    storeId: currentStoreId || undefined,
+  });
   const deleteCategory = useMutation(api.categories.remove);
 
   const formatDate = (timestamp: number) => {

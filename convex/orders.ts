@@ -11,12 +11,22 @@ export const getAll = query({
       cursor: v.optional(v.string()),
       numItems: v.optional(v.number()),
     })),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const paginationOpts = args.paginationOpts || { numItems: 50 };
     
+    // Si NO se proporciona storeId, retornar vacío
+    if (!args.storeId) {
+      return {
+        orders: [],
+        isDone: true,
+        continueCursor: null,
+      };
+    }
+    
     const ordersPage = await ctx.db.query("orders")
-      .withIndex("by_created_at")
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .order("desc")
       .paginate(paginationOpts as PaginationOptions);
     
@@ -87,6 +97,7 @@ export const create = mutation({
       }))),
     })),
     totalAmount: v.number(),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -98,6 +109,7 @@ export const create = mutation({
       supplier: args.supplier,
       products: args.products,
       totalAmount: args.totalAmount,
+      storeId: args.storeId,
       createdAt: now,
       updatedAt: now,
     });
@@ -201,9 +213,15 @@ export const search = query({
   args: {
     searchTerm: v.optional(v.string()),
     limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
+    
+    // Si NO se proporciona storeId, retornar array vacío
+    if (!args.storeId) {
+      return [];
+    }
     
     let orders;
     
@@ -211,13 +229,15 @@ export const search = query({
       const searchTerm = args.searchTerm.trim();
       
       // Buscar por número de orden
-      const searchByNumber = ctx.db
-        .query("orders")
-        .withIndex("by_order_number", (q) => q.eq("orderNumber", searchTerm))
-        .take(limit);
+      const allOrders = await ctx.db.query("orders")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+        .collect();
+      
+      const searchByNumber = allOrders
+        .filter(order => order.orderNumber === searchTerm)
+        .slice(0, limit);
       
       // Buscar por proveedor (búsqueda parcial)
-      const allOrders = await ctx.db.query("orders").collect();
       const searchBySupplier = allOrders
         .filter(order => 
           order.supplier.toLowerCase().includes(searchTerm.toLowerCase())
@@ -225,14 +245,14 @@ export const search = query({
         .slice(0, limit);
       
       // Combinar resultados y eliminar duplicados
-      const allResults = [...(await searchByNumber), ...searchBySupplier];
+      const allResults = [...searchByNumber, ...searchBySupplier];
       orders = allResults.filter((order, index, self) => 
         index === self.findIndex(o => o._id === order._id)
       );
     } else {
       orders = await ctx.db
         .query("orders")
-        .withIndex("by_created_at")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
         .order("desc")
         .take(limit);
     }

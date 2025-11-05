@@ -3,16 +3,20 @@ import { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../convex/_generated/api';
+import { useCurrentStore } from '../hooks/useCurrentStore';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
+  const currentStoreId = useCurrentStore();
+
   // Obtener métricas del dashboard
   const dashboardMetrics = useQuery(api.sales.getDashboardMetrics, {
     month: selectedMonth,
     year: selectedYear,
+    storeId: currentStoreId || undefined,
   });
 
   // Obtener top productos más vendidos
@@ -20,21 +24,26 @@ const Dashboard = () => {
     month: selectedMonth,
     year: selectedYear,
     limit: 3,
+    storeId: currentStoreId || undefined,
   });
 
   // Obtener top productos más rentables
   const topProfitableProducts = useQuery(api.sales.getTopProfitableProducts, {
     limit: 3,
+    storeId: currentStoreId || undefined,
   });
 
   // Obtener ventas por canal
   const salesByChannel = useQuery(api.sales.getSalesByChannel, {
     month: selectedMonth,
     year: selectedYear,
+    storeId: currentStoreId || undefined,
   });
 
   // Obtener estado del inventario
-  const inventoryStatus = useQuery(api.products.getInventoryStatus, {});
+  const inventoryStatus = useQuery(api.products.getInventoryStatus, {
+    storeId: currentStoreId || undefined,
+  });
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-PE', {

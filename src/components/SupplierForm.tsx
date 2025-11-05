@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+import { useCurrentStore } from '../hooks/useCurrentStore';
 
 interface SupplierFormProps {
   supplierId?: Id<'suppliers'>;
@@ -20,6 +21,7 @@ const SupplierForm = ({ supplierId, onSuccess, onCancel }: SupplierFormProps) =>
     number: '',
   });
 
+  const currentStoreId = useCurrentStore();
   const supplier = useQuery(api.suppliers.getById, supplierId ? { id: supplierId } : 'skip');
   const createSupplier = useMutation(api.suppliers.create);
   const updateSupplier = useMutation(api.suppliers.update);
@@ -55,6 +57,7 @@ const SupplierForm = ({ supplierId, onSuccess, onCancel }: SupplierFormProps) =>
         await createSupplier({
           name: formData.name,
           number: formData.number,
+          storeId: currentStoreId || undefined,
         });
       }
       

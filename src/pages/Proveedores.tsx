@@ -3,15 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import SupplierForm from '../components/SupplierForm';
+import { useCurrentStore } from '../hooks/useCurrentStore';
 
 const Proveedores = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
 
+  const currentStoreId = useCurrentStore();
+
   const suppliersData = useQuery(api.suppliers.search, {
     searchTerm: searchTerm.trim() || undefined,
-    limit: 100
+    limit: 100,
+    storeId: currentStoreId || undefined,
   });
   
   const suppliers = suppliersData;

@@ -4,10 +4,22 @@ import { api } from "./_generated/api";
 
 // Obtener todas las ventas ordenadas por fecha de creación (con límite)
 export const getAll = query({
-  args: { paginationOpts: v.object({ numItems: v.number(), cursor: v.union(v.string(), v.null()) }) },
+  args: { 
+    paginationOpts: v.object({ numItems: v.number(), cursor: v.union(v.string(), v.null()) }),
+    storeId: v.optional(v.id("stores")),
+  },
   handler: async (ctx, args) => {
+    // Si NO se proporciona storeId, retornar vacío
+    if (!args.storeId) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: null,
+      };
+    }
+    
     const sales = await ctx.db.query("sales")
-      .withIndex("by_created_at")
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .order("desc")
       .paginate(args.paginationOpts);
     
@@ -68,9 +80,15 @@ export const search = query({
   args: {
     searchTerm: v.optional(v.string()),
     limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
+    
+    // Si NO se proporciona storeId, retornar array vacío
+    if (!args.storeId) {
+      return [];
+    }
     
     let sales;
     
@@ -78,13 +96,15 @@ export const search = query({
       const searchTerm = args.searchTerm.trim();
       
       // Buscar por número de venta
-      const searchByNumber = ctx.db
-        .query("sales")
-        .withIndex("by_sale_number", (q) => q.eq("saleNumber", searchTerm))
-        .take(limit);
+      const allSales = await ctx.db.query("sales")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+        .collect();
+      
+      const searchByNumber = allSales
+        .filter(sale => sale.saleNumber === searchTerm)
+        .slice(0, limit);
       
       // Buscar por cliente (búsqueda parcial)
-      const allSales = await ctx.db.query("sales").collect();
       const searchByCustomer = allSales
         .filter(sale => 
           sale.customerName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -92,14 +112,14 @@ export const search = query({
         .slice(0, limit);
       
       // Combinar resultados y eliminar duplicados
-      const allResults = [...(await searchByNumber), ...searchByCustomer];
+      const allResults = [...searchByNumber, ...searchByCustomer];
       sales = allResults.filter((sale, index, self) => 
         index === self.findIndex(s => s._id === sale._id)
       );
     } else {
       sales = await ctx.db
         .query("sales")
-        .withIndex("by_created_at")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
         .order("desc")
         .take(limit);
     }
@@ -181,6 +201,7 @@ export const create = mutation({
     totalAmount: v.number(),
     district: v.optional(v.string()),
     googleMapsUrl: v.optional(v.string()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -215,6 +236,7 @@ export const create = mutation({
       totalAmount: args.totalAmount,
       district: args.district,
       googleMapsUrl: args.googleMapsUrl,
+      storeId: args.storeId,
       createdAt: now,
       updatedAt: now,
     });
@@ -395,21 +417,26 @@ export const getSalesByChannel = query({
   args: {
     month: v.number(),
     year: v.number(),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
+    // Si NO se proporciona storeId, retornar array vacío
+    if (!args.storeId) {
+      return [];
+    }
+    
     const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
     const endOfMonth = new Date(args.year, args.month, 0, 23, 59, 59, 999).getTime();
     
-    const sales = await ctx.db
+    const allSales = await ctx.db
       .query("sales")
-      .withIndex("by_created_at")
-      .filter(q => 
-        q.and(
-          q.gte(q.field("saleDate"), startOfMonth),
-          q.lte(q.field("saleDate"), endOfMonth)
-        )
-      )
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
+    
+    // Filtrar por fecha
+    const sales = allSales.filter(sale => 
+      sale.saleDate >= startOfMonth && sale.saleDate <= endOfMonth
+    );
     
     const channelStats: Record<string, { amount: number; count: number }> = {};
     
@@ -436,22 +463,27 @@ export const getTopSellingProducts = query({
     month: v.number(),
     year: v.number(),
     limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
+    // Si NO se proporciona storeId, retornar array vacío
+    if (!args.storeId) {
+      return [];
+    }
+    
     const limit = args.limit || 3;
     const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
     const endOfMonth = new Date(args.year, args.month, 0, 23, 59, 59, 999).getTime();
     
-    const sales = await ctx.db
+    const allSales = await ctx.db
       .query("sales")
-      .withIndex("by_created_at")
-      .filter(q => 
-        q.and(
-          q.gte(q.field("saleDate"), startOfMonth),
-          q.lte(q.field("saleDate"), endOfMonth)
-        )
-      )
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
+    
+    // Filtrar por fecha
+    const sales = allSales.filter(sale => 
+      sale.saleDate >= startOfMonth && sale.saleDate <= endOfMonth
+    );
     
     const productStats: Record<string, { 
       productId: string; 
@@ -492,12 +524,21 @@ export const getTopSellingProducts = query({
 export const getTopProfitableProducts = query({
   args: {
     limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
+    // Si NO se proporciona storeId, retornar array vacío
+    if (!args.storeId) {
+      return [];
+    }
+    
     const limit = args.limit || 3;
     
-    // Obtener todos los productos
-    const products = await ctx.db.query("products").collect();
+    // Obtener productos de la tienda
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+      .collect();
     
     // Ordenar por margen de ganancia (profitPercentage) y tomar los top
     const topProfitableProducts = products
@@ -523,23 +564,43 @@ export const getDashboardMetrics = query({
   args: {
     month: v.number(),
     year: v.number(),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
+    // Si NO se proporciona storeId, retornar métricas vacías
+    if (!args.storeId) {
+      return {
+        salesIncome: 0,
+        additionalIncome: 0,
+        totalIncome: 0,
+        productCosts: 0,
+        additionalExpenses: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        profitMargin: 0,
+        salesCount: 0,
+        ordersCount: 0,
+        incomeTransactionsCount: 0,
+        expenseTransactionsCount: 0,
+        previousMonth: args.month > 1 ? args.month - 1 : 12,
+        previousYear: args.month > 1 ? args.year : args.year - 1,
+      };
+    }
+    
     // Calcular fechas del mes una sola vez
     const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
     const endOfMonth = new Date(args.year, args.month, 0, 23, 59, 59, 999).getTime();
     
     // Obtener métricas de ventas
-    const sales = await ctx.db
+    const allSales = await ctx.db
       .query("sales")
-      .withIndex("by_created_at")
-      .filter(q => 
-        q.and(
-          q.gte(q.field("saleDate"), startOfMonth),
-          q.lte(q.field("saleDate"), endOfMonth)
-        )
-      )
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
+    
+    // Filtrar por fecha
+    const sales = allSales.filter(sale => 
+      sale.saleDate >= startOfMonth && sale.saleDate <= endOfMonth
+    );
     
     const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
     const totalDiscounts = sales.reduce((sum, sale) => sum + sale.discountAmount, 0);
@@ -559,19 +620,22 @@ export const getDashboardMetrics = query({
       netIncome: number;
       incomeCount: number;
       expenseCount: number;
-    } = await ctx.runQuery(api.financial_transactions.getMetricsByMonth, args);
+    } = await ctx.runQuery(api.financial_transactions.getMetricsByMonth, {
+      month: args.month,
+      year: args.year,
+      storeId: args.storeId,
+    });
     
     // Obtener métricas de órdenes (gastos de productos)
-    const orders = await ctx.db
+    const allOrders = await ctx.db
       .query("orders")
-      .withIndex("by_created_at")
-      .filter(q => 
-        q.and(
-          q.gte(q.field("orderDate"), startOfMonth),
-          q.lte(q.field("orderDate"), endOfMonth)
-        )
-      )
+      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
       .collect();
+    
+    // Filtrar por fecha
+    const orders = allOrders.filter(order => 
+      order.orderDate >= startOfMonth && order.orderDate <= endOfMonth
+    );
     
     const totalOrderCosts = orders.reduce((sum, order) => sum + order.totalAmount, 0);
     

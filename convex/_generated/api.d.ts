@@ -20,6 +20,7 @@ import type * as http from "../http.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as sales from "../sales.js";
+import type * as stores from "../stores.js";
 import type * as suppliers from "../suppliers.js";
 
 /**
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   orders: typeof orders;
   products: typeof products;
   sales: typeof sales;
+  stores: typeof stores;
   suppliers: typeof suppliers;
 }>;
 export declare const api: FilterApi<

@@ -1,29 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import CategoryForm from '../components/CategoryForm';
-import { useCurrentStore } from '../hooks/useCurrentStore';
+import StoreForm from '../components/StoreForm';
+import type { Id } from '../../convex/_generated/dataModel';
 
-const Categorias = () => {
+const STORE_KEY = 'currentStoreId';
+
+const Stores = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [currentStoreId, setCurrentStoreId] = useState<Id<'stores'> | null>(null);
 
-  const currentStoreId = useCurrentStore();
+  const stores = useQuery(api.stores.getAll, { limit: 100 });
+  const currentStore = useQuery(
+    api.stores.getById,
+    currentStoreId ? { id: currentStoreId } : 'skip'
+  );
 
-  const categories = useQuery(api.categories.getAll, { 
-    limit: 100,
-    storeId: currentStoreId || undefined,
-  });
+  // Cargar tienda actual desde localStorage al montar
+  useEffect(() => {
+    const savedStoreId = localStorage.getItem(STORE_KEY);
+    if (savedStoreId) {
+      try {
+        setCurrentStoreId(savedStoreId as Id<'stores'>);
+      } catch (error) {
+        console.error('Error loading current store:', error);
+      }
+    }
+  }, []);
 
-  // Filtrar categorías por término de búsqueda
-  const filteredCategories = categories?.filter(category =>
-    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  // Guardar tienda actual en localStorage cuando cambie
+  useEffect(() => {
+    if (currentStoreId) {
+      localStorage.setItem(STORE_KEY, currentStoreId);
+    } else {
+      localStorage.removeItem(STORE_KEY);
+    }
+  }, [currentStoreId]);
+
+  // Filtrar tiendas por término de búsqueda
+  const filteredStores = stores?.filter(store =>
+    store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (store.description && store.description.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
 
-  const handleCreateCategory = () => {
+  const handleCreateStore = () => {
     setShowCreateForm(true);
   };
 
@@ -34,6 +57,7 @@ const Categorias = () => {
   const handleFormCancel = () => {
     setShowCreateForm(false);
   };
+
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('es-PE', {
@@ -56,7 +80,7 @@ const Categorias = () => {
             ← Volver
           </button>
         </div>
-        <CategoryForm onSuccess={handleFormSuccess} onCancel={handleFormCancel} />
+        <StoreForm onSuccess={handleFormSuccess} onCancel={handleFormCancel} />
       </div>
     );
   }
@@ -66,36 +90,57 @@ const Categorias = () => {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Categorías</h1>
-            <p className="text-gray-600">Gestiona las categorías de tus productos</p>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Tiendas</h1>
+            <p className="text-gray-600">Gestiona tus tiendas y selecciona la tienda actual</p>
           </div>
           <button
-            onClick={handleCreateCategory}
+            onClick={handleCreateStore}
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
-            Crear Categoría
+            Crear Tienda
           </button>
         </div>
+
+        {/* Tienda actual */}
+        {currentStore && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-800 mb-1">Tienda actual</p>
+                <p className="text-lg font-semibold text-green-900">{currentStore.name}</p>
+                {currentStore.description && (
+                  <p className="text-sm text-green-700 mt-1">{currentStore.description}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setCurrentStoreId(null)}
+                className="text-sm text-green-700 hover:text-green-800 font-medium"
+              >
+                Cambiar
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Barra de búsqueda */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Buscar categorías
+              Buscar tiendas
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Busca por nombre o descripción de la categoría..."
+              placeholder="Busca por nombre o descripción de la tienda..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
             />
           </div>
         </div>
 
-        {/* Lista de categorías */}
+        {/* Lista de tiendas */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {filteredCategories && filteredCategories.length > 0 ? (
+          {filteredStores && filteredStores.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -112,24 +157,24 @@ const Categorias = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredCategories.map((category) => (
+                  {filteredStores.map((store) => (
                     <tr 
-                      key={category._id} 
+                      key={store._id} 
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/categorias/${category._id}`)}
+                      onClick={() => navigate(`/tiendas/${store._id}`)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {category.name}
+                          {store.name}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-500 max-w-xs truncate">
-                          {category.description || 'Sin descripción'}
+                          {store.description || 'Sin descripción'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(category.createdAt)}
+                        {formatDate(store.createdAt)}
                       </td>
                     </tr>
                   ))}
@@ -141,13 +186,13 @@ const Categorias = () => {
               <div className="text-gray-500">
                 {searchTerm ? (
                   <>
-                    <p className="text-lg font-medium mb-2">No se encontraron categorías</p>
+                    <p className="text-lg font-medium mb-2">No se encontraron tiendas</p>
                     <p className="text-sm">Intenta ajustar el término de búsqueda</p>
                   </>
                 ) : (
                   <>
-                    <p className="text-lg font-medium mb-2">No hay categorías registradas</p>
-                    <p className="text-sm">Crea tu primera categoría para comenzar</p>
+                    <p className="text-lg font-medium mb-2">No hay tiendas registradas</p>
+                    <p className="text-sm">Crea tu primera tienda para comenzar</p>
                   </>
                 )}
               </div>
@@ -159,4 +204,5 @@ const Categorias = () => {
   );
 };
 
-export default Categorias;
+export default Stores;
+

@@ -2,41 +2,39 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
-import { useCurrentStore } from '../hooks/useCurrentStore';
 
-interface CategoryFormProps {
-  categoryId?: Id<'categories'>;
+interface StoreFormProps {
+  storeId?: Id<'stores'>;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-interface CategoryFormData {
+interface StoreFormData {
   name: string;
   description: string;
 }
 
-const CategoryForm = ({ categoryId, onSuccess, onCancel }: CategoryFormProps) => {
-  const [formData, setFormData] = useState<CategoryFormData>({
+const StoreForm = ({ storeId, onSuccess, onCancel }: StoreFormProps) => {
+  const [formData, setFormData] = useState<StoreFormData>({
     name: '',
     description: '',
   });
 
-  const currentStoreId = useCurrentStore();
-  const category = useQuery(api.categories.getById, categoryId ? { id: categoryId } : 'skip');
-  const createCategory = useMutation(api.categories.create);
-  const updateCategory = useMutation(api.categories.update);
+  const store = useQuery(api.stores.getById, storeId ? { id: storeId } : 'skip');
+  const createStore = useMutation(api.stores.create);
+  const updateStore = useMutation(api.stores.update);
 
-  // Cargar datos de la categoría si está editando
+  // Cargar datos de la tienda si está editando
   useEffect(() => {
-    if (category) {
+    if (store) {
       setFormData({
-        name: category.name,
-        description: category.description || '',
+        name: store.name,
+        description: store.description || '',
       });
     }
-  }, [category]);
+  }, [store]);
 
-  const handleInputChange = (field: keyof CategoryFormData, value: string) => {
+  const handleInputChange = (field: keyof StoreFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -47,23 +45,22 @@ const CategoryForm = ({ categoryId, onSuccess, onCancel }: CategoryFormProps) =>
     e.preventDefault();
     
     try {
-      if (categoryId) {
-        await updateCategory({
-          id: categoryId,
+      if (storeId) {
+        await updateStore({
+          id: storeId,
           name: formData.name,
           description: formData.description || undefined,
         });
       } else {
-        await createCategory({
+        await createStore({
           name: formData.name,
           description: formData.description || undefined,
-          storeId: currentStoreId || undefined,
         });
       }
       
       onSuccess?.();
     } catch (error) {
-      console.error('Error saving category:', error);
+      console.error('Error saving store:', error);
     }
   };
 
@@ -71,7 +68,7 @@ const CategoryForm = ({ categoryId, onSuccess, onCancel }: CategoryFormProps) =>
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-          {categoryId ? 'Editar Categoría' : 'Crear Categoría'}
+          {storeId ? 'Editar Tienda' : 'Crear Tienda'}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -79,14 +76,14 @@ const CategoryForm = ({ categoryId, onSuccess, onCancel }: CategoryFormProps) =>
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre de la categoría *
+                Nombre de la tienda *
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="Ej: Ropa de bebé, Juguetes, Accesorios"
+                placeholder="Ej: Tienda Principal, Sucursal Centro, etc."
                 required
               />
             </div>
@@ -99,14 +96,14 @@ const CategoryForm = ({ categoryId, onSuccess, onCancel }: CategoryFormProps) =>
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="Descripción opcional de la categoría..."
+                placeholder="Descripción opcional de la tienda..."
                 rows={4}
               />
             </div>
           </div>
 
           {/* Botones */}
-          <div className="flex justify-end space-x-4 pt-6 border-t">
+          <div className="flex justify-end space-x-4 pt-6 ">
             <button
               type="button"
               onClick={onCancel}
@@ -118,7 +115,7 @@ const CategoryForm = ({ categoryId, onSuccess, onCancel }: CategoryFormProps) =>
               type="submit"
               className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
             >
-              {categoryId ? 'Actualizar Categoría' : 'Crear Categoría'}
+              {storeId ? 'Actualizar Tienda' : 'Crear Tienda'}
             </button>
           </div>
         </form>
@@ -127,4 +124,5 @@ const CategoryForm = ({ categoryId, onSuccess, onCancel }: CategoryFormProps) =>
   );
 };
 
-export default CategoryForm;
+export default StoreForm;
+

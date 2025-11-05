@@ -15,6 +15,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 import ProductForm from '../components/ProductForm';
 import WholesaleModal from '../components/WholesaleModal';
 import ProductImage from '../components/ProductImage';
+import { useCurrentStore } from '../hooks/useCurrentStore';
 
 const Productos = () => {
   const navigate = useNavigate();
@@ -26,11 +27,16 @@ const Productos = () => {
   const [sortField, setSortField] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const categories = useQuery(api.categories.getAll, {});
+  const currentStoreId = useCurrentStore();
+
+  const categories = useQuery(api.categories.getAll, { 
+    storeId: currentStoreId || undefined,
+  });
   const products = useQuery(api.products.search, {
     searchTerm: searchTerm.trim() || undefined,
     categoryId: selectedCategory ? (selectedCategory as Id<'categories'>) : undefined,
     limit: 100,
+    storeId: currentStoreId || undefined,
   });
 
   const handleSort = (field: string) => {

@@ -3,14 +3,23 @@ import { v } from "convex/values";
 
 // Obtener todos los proveedores ordenados por fecha de creación (con límite)
 export const getAll = query({
-  args: { limit: v.optional(v.number()) },
+  args: { 
+    limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
+  },
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
     
-    return await ctx.db.query("suppliers")
-      .withIndex("by_created_at")
-      .order("desc")
-      .take(limit);
+    // Si se proporciona storeId, solo traer proveedores de esa tienda
+    if (args.storeId) {
+      return await ctx.db.query("suppliers")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+        .order("desc")
+        .take(limit);
+    }
+    
+    // Si NO se proporciona storeId, retornar array vacío
+    return [];
   },
 });
 
@@ -27,9 +36,15 @@ export const search = query({
   args: {
     searchTerm: v.optional(v.string()),
     limit: v.optional(v.number()),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 50;
+    
+    // Si NO se proporciona storeId, retornar array vacío
+    if (!args.storeId) {
+      return [];
+    }
     
     let suppliers;
     
@@ -37,7 +52,10 @@ export const search = query({
       const searchTerm = args.searchTerm.trim();
       
       // Buscar por nombre (búsqueda parcial)
-      const allSuppliers = await ctx.db.query("suppliers").collect();
+      const allSuppliers = await ctx.db.query("suppliers")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+        .collect();
+      
       suppliers = allSuppliers
         .filter(supplier => 
           supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -46,7 +64,7 @@ export const search = query({
     } else {
       suppliers = await ctx.db
         .query("suppliers")
-        .withIndex("by_created_at")
+        .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
         .order("desc")
         .take(limit);
     }
@@ -60,12 +78,14 @@ export const create = mutation({
   args: {
     name: v.string(),
     number: v.string(),
+    storeId: v.optional(v.id("stores")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     return await ctx.db.insert("suppliers", {
       name: args.name,
       number: args.number,
+      storeId: args.storeId,
       createdAt: now,
     });
   },
