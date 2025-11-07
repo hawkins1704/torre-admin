@@ -95,7 +95,7 @@ const SignIn = () => {
                                     <span
                                         className="font-medium text-green-600 hover:text-green-700"
                                         onClick={() => {
-                                            // setStep("signUp");
+                                            setStep("signUp");
                                         }}
                                     >
                                         Regístrate aquí

@@ -1,6 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthActions } from '@convex-dev/auth/react';
 
+const STORE_KEY = 'currentStoreId';
+
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -11,7 +13,14 @@ interface SidebarProps {
 const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-const { signOut } = useAuthActions();
+  const { signOut } = useAuthActions();
+
+  const handleSignOut = () => {
+    localStorage.removeItem(STORE_KEY);
+    void signOut();
+    navigate('/login');
+  };
+
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/tiendas', label: 'Tiendas', icon: '🏪' },
@@ -67,10 +76,7 @@ const { signOut } = useAuthActions();
               })}
               <li>
                 <button
-                  onClick={() => {
-                    void signOut();
-                    navigate('/login');
-                  }}
+                  onClick={handleSignOut}
                   className="font-medium text-red-700 hover:bg-gray-50 hover:text-red-800 w-full flex items-center px-3 py-2 rounded-lg"
                 >
                   
@@ -122,6 +128,17 @@ const { signOut } = useAuthActions();
                   </li>
                 );
               })}
+              <li>
+                <button
+                  onClick={() => {
+                    onClose();
+                    handleSignOut();
+                  }}
+                  className="font-medium text-red-700 hover:bg-gray-50 hover:text-red-800 w-full flex items-center space-x-3 px-3 py-2 rounded-lg"
+                >
+                  <span>Cerrar sesión</span>
+                </button>
+              </li>
             </ul>
           </nav>
         </div>

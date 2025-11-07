@@ -36,7 +36,7 @@ export const getById = query({
 
     // Verificar que el usuario sea el dueño
     if (store.ownerId !== userId) {
-      throw new Error("No tienes permiso para acceder a esta tienda");
+      return null;
     }
 
     return store;
