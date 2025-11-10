@@ -278,7 +278,7 @@ const ProductDetail = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">IGV</label>
-              <p className="text-gray-900">{formatCurrency(product.igv)}</p>
+              <p className="text-gray-900">{product.igvPercentage ?? 0}%</p>
             </div>
             <div className="border-t pt-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Ganancia en soles</label>

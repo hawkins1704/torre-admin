@@ -9,7 +9,7 @@ interface Product {
   packaging: number;
   profitPercentage: number;
   gatewayCommission: number;
-  igv: number;
+  igvPercentage?: number;
   finalPrice: number;
   finalPriceWithoutGateway: number;
 }
@@ -97,7 +97,8 @@ const WholesaleModal = ({ product, isOpen, onClose }: WholesaleModalProps) => {
   useEffect(() => {
     if (!product) return;
 
-    const { cost, igv } = product;
+    const { cost } = product;
+    const igvPercentage = product.igvPercentage ?? 0;
     const { packaging, profitPercentage, quantity } = wholesaleData;
     
     // Costo total con packaging modificado
@@ -107,7 +108,7 @@ const WholesaleModal = ({ product, isOpen, onClose }: WholesaleModalProps) => {
     
     // Precio sin pasarela (comisión = 0%)
     const priceWithoutIgv = desiredNetIncome; // Sin división por comisión
-    const priceWithIgv = priceWithoutIgv + igv;
+    const priceWithIgv = priceWithoutIgv + (priceWithoutIgv * (igvPercentage / 100));
     const finalPrice = Math.ceil(priceWithIgv);
     
     // Cálculos por cantidad
@@ -320,7 +321,7 @@ const WholesaleModal = ({ product, isOpen, onClose }: WholesaleModalProps) => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">IGV:</span>
-                    <span className="text-sm font-medium">{formatCurrency(product.igv)}</span>
+                    <span className="text-sm font-medium">{(product.igvPercentage ?? 0).toFixed(1)}%</span>
                   </div>
                 </div>
               </div>
